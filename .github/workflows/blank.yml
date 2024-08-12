@@ -24,64 +24,62 @@ jobs:
 
     - name: Merge JSON Data, Compare with Final, and Save Differences
       run: |
-        python -c "
-import requests
-import json
-import os
+        import requests
+        import json
+        import os
 
-def merge_json_data(*lists):
-    merged_dict = {}
-    for json_list in lists:
-        for item in json_list:
-            merged_dict[item['key']] = item
-    return list(merged_dict.values())
+        def merge_json_data(*lists):
+            merged_dict = {}
+            for json_list in lists:
+                for item in json_list:
+                    merged_dict[item['key']] = item
+            return list(merged_dict.values())
 
-def save_to_json(data, output_file_path):
-    with open(output_file_path, 'w', encoding='utf-8') as json_file:
-        json.dump(data, json_file, ensure_ascii=False, indent=4)
+        def save_to_json(data, output_file_path):
+            with open(output_file_path, 'w', encoding='utf-8') as json_file:
+                json.dump(data, json_file, ensure_ascii=False, indent=4)
 
-def read_json_file(file_path):
-    with open(file_path, 'r', encoding='utf-8') as json_file:
-        return {item['key']: item for item in json.load(json_file)}
+        def read_json_file(file_path):
+            with open(file_path, 'r', encoding='utf-8') as json_file:
+                return {item['key']: item for item in json.load(json_file)}
 
-def find_differences(merged_data, final_data):
-    differences = []
-    for key, value in merged_data.items():
-        if key not in final_data or final_data[key]['original'].strip() != value['original'].strip():
-            differences.append(value)
-    return differences
+        def find_differences(merged_data, final_data):
+            differences = []
+            for key, value in merged_data.items():
+                if key not in final_data or final_data[key]['original'].strip() != value['original'].strip():
+                    differences.append(value)
+            return differences
 
-url_checkfiles = 'https://paratranz.cn/api/projects/8340/files'
-headers = {
-    'Authorization': '5c672e8056d802c52d3398e1376174f0',
-    'Cookie': 'sid=s%3A5c672e8056d802c52d3398e1376174f0.Nvn4B0oVX%2BeUAIP7cSqwkqp7%2BIr8DwL1AhXhpRKs7r8'
-}
+        url_checkfiles = 'https://paratranz.cn/api/projects/8340/files'
+        headers = {
+            'Authorization': '5c672e8056d802c52d3398e1376174f0',
+            'Cookie': 'sid=s%3A5c672e8056d802c52d3398e1376174f0.Nvn4B0oVX%2BeUAIP7cSqwkqp7%2BIr8DwL1AhXhpRKs7r8'
+        }
 
-json_data_lists = []
-response = requests.get(url_checkfiles, headers=headers)
+        json_data_lists = []
+        response = requests.get(url_checkfiles, headers=headers)
 
-for item in response.json():
-    url_download = f'https://paratranz.cn/api/projects/8340/files/{item["id"]}/translation'
-    response = requests.get(url_download, headers=headers)
-    json_data_lists.append(response.json())
+        for item in response.json():
+            url_download = f'https://paratranz.cn/api/projects/8340/files/{item["id"]}/translation'
+            response = requests.get(url_download, headers=headers)
+            json_data_lists.append(response.json())
 
-merged_data = merge_json_data(*json_data_lists)
+        merged_data = merge_json_data(*json_data_lists)
 
-output_file_name = 'final.json'
-save_to_json(merged_data, output_file_name)
+        output_file_name = 'final.json'
+        save_to_json(merged_data, output_file_name)
 
-# 读取之前的 final.json 文件作为基准
-final_file_path = 'final.json'
-if os.path.exists(final_file_path):
-    final_data = read_json_file(final_file_path)
-    merged_data_dict = {item['key']: item for item in merged_data}
-    differences = find_differences(merged_data_dict, final_data)
-    save_to_json(differences, 'differences.json')
-    print('Differences saved to differences.json')
-else:
-    print(f'No previous final.json found. Skipping difference calculation.')
-        "
-        
+        # 读取之前的 final.json 文件作为基准
+        final_file_path = 'final.json'
+        if os.path.exists(final_file_path):
+            final_data = read_json_file(final_file_path)
+            merged_data_dict = {item['key']: item for item in merged_data}
+            differences = find_differences(merged_data_dict, final_data)
+            save_to_json(differences, 'differences.json')
+            print('Differences saved to differences.json')
+        else:
+            print(f'No previous final.json found. Skipping difference calculation.')
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
