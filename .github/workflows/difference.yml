@@ -41,25 +41,25 @@ jobs:
 
     - name: Fetch and merge JSON data
       run: |
-        # Fetch JSON data from API
+        # 从 API 获取 JSON 数据
         curl -s -H "Authorization: 5c672e8056d802c52d3398e1376174f0" \
              -H "Cookie: sid=s%3A5c672e8056d802c52d3398e1376174f0.Nvn4B0oVX%2BeUAIP7cSqwkqp7%2BIr8DwL1AhXhpRKs7r8" \
              "https://paratranz.cn/api/projects/8340/files" > files.json
-
-        # Initialize empty array for merging
+    
+        # 初始化空数组用于合并
         echo '[]' > merged_data.json
-
-        # Loop through each file ID and merge JSON data
-        jq -c '.[] | .id' files.json | while read -r file_id; do
+    
+        # 循环遍历每个文件并合并 JSON 数据
+        jq -c '.[] | .key' files.json | while read -r key; do
           curl -s -H "Authorization: 5c672e8056d802c52d3398e1376174f0" \
                -H "Cookie: sid=s%3A5c672e8056d802c52d3398e1376174f0.Nvn4B0oVX%2BeUAIP7cSqwkqp7%2BIr8DwL1AhXhpRKs7r8" \
-               "https://paratranz.cn/api/projects/8340/files/${file_id}/translation" > temp.json
+               "https://paratranz.cn/api/projects/8340/files/${key}/translation" > temp.json
           
-          # Merge into the merged_data.json file
-          jq -s '.[0] + .[1]' merged_data.json temp.json > temp_merged.json
+          # 使用jq合并数据，通过key合并内容
+          jq -s 'reduce .[] as $item ({}; .[$item.key] = ($item + .[$item.key]))' merged_data.json temp.json > temp_merged.json
           mv temp_merged.json merged_data.json
         done
-
+    
         mv merged_data.json final.json
 
     - name: Compare global JSON with final JSON
