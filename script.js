@@ -37,10 +37,15 @@ function convertIniToJson() {
     console.log('INI 文件已转换为 JSON 并保存到 global.json');
 }
 
-// 获取所有文件 ID 列表
+// 获取所有文件 ID 列表，并按创建时间排序
 async function fetchFileIds() {
     const response = await axios.get('https://paratranz.cn/api/projects/8340/files', authHeader);
-    return response.data.map(file => file.id);
+    const files = response.data;
+
+    // 根据 createdAt 时间戳进行排序，时间越近的排在前面
+    files.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    return files.map(file => file.id);
 }
 
 // 根据文件 ID 获取翻译数据
