@@ -79,8 +79,9 @@ function mergeJsonData(allData) {
 
 // 保存 global.json 中与 final.json 有差异的内容到 difference.json，忽略前后空格
 function saveDifferences() {
-    const globalJson = JSON.parse(fs.readFileSync('global.json', 'utf-8'));
-    const finalJson = JSON.parse(fs.readFileSync('final.json', 'utf-8'));
+    // 读取并解析 JSON 文件，移除 BOM
+    const globalJson = JSON.parse(iconv.decode(fs.readFileSync('global.json'), 'utf-8'));
+    const finalJson = JSON.parse(iconv.decode(fs.readFileSync('final.json'), 'utf-8'));
     
     const differences = globalJson.filter(gItem => {
         const fItem = finalJson.find(f => f.key === gItem.key);
