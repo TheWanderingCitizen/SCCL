@@ -11,10 +11,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3  # 更新到 v3 版本
+      uses: actions/checkout@v4  # 更新到 v3 版本
 
     - name: Set up Node.js
-      uses: actions/setup-node@v3  # 更新到 v3 版本
+      uses: actions/setup-node@v4  # 更新到 v3 版本
       with:
         node-version: '18'  # 使用适合您的 Node.js 版本
 
