@@ -24,7 +24,7 @@ jobs:
 
     - name: Merge JSON Data, Compare with Final, and Save Differences
       run: |
-        echo "
+        cat << 'EOF' > merge_and_diff_json_data.py
 import requests
 import json
 import os
@@ -58,11 +58,11 @@ headers = {
 }
 
 json_data_lists = []
-response = requests.request('GET', url_checkfiles, headers=headers)
+response = requests.get(url_checkfiles, headers=headers)
 
 for item in response.json():
-    url_download = f'https://paratranz.cn/api/projects/8340/files/{item['id']}/translation'
-    response = requests.request('GET', url_download, headers=headers)
+    url_download = f'https://paratranz.cn/api/projects/8340/files/{item["id"]}/translation'
+    response = requests.get(url_download, headers=headers)
     json_data_lists.append(response.json())
 
 merged_data = merge_json_data(*json_data_lists)
@@ -80,8 +80,7 @@ if os.path.exists(final_file_path):
     print('Differences saved to differences.json')
 else:
     print(f'No previous final.json found. Skipping difference calculation.')
-
-" > merge_and_diff_json_data.py
+EOF
 
         # 运行Python脚本
         python merge_and_diff_json_data.py
