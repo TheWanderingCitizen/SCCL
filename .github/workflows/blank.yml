@@ -21,18 +21,16 @@ jobs:
     - name: Convert INI to JSON
       run: |
         # Convert INI to JSON format
-        cat global.ini | grep '=' | while IFS= read -r line; do
-          key=$(echo "$line" | cut -d '=' -f 1 | xargs)
-          original=$(echo "$line" | cut -d '=' -f 2- | xargs)
-          echo "{\"key\": \"$key\", \"original\": \"$original\", \"translation\": \"\", \"context\": \"\"}," >> temp.json
+        echo "[" > global.json
+        grep '=' global.ini | while IFS= read -r line; do
+          key=$(echo "$line" | cut -d '=' -f 1 | sed 's/^ *//;s/ *$//;s/"/\\"/g')
+          original=$(echo "$line" | cut -d '=' -f 2- | sed 's/^ *//;s/ *$//;s/"/\\"/g')
+          echo "{\"key\": \"$key\", \"original\": \"$original\", \"translation\": \"\", \"context\": \"\"}," >> global.json
         done
 
-        # Wrap the JSON objects in an array
-        echo "[" > global.json
-        cat temp.json >> global.json
-        sed -i '$ s/,$//' global.json # Remove trailing comma
+        # Remove the trailing comma and close the JSON array
+        sed -i '$ s/,$//' global.json
         echo "]" >> global.json
-        rm temp.json
 
     - name: Fetch and merge JSON data
       run: |
