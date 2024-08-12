@@ -57,10 +57,17 @@ jobs:
           
           # Merge using the logic that prioritizes later data in case of key conflict
           jq -s '
-            def merge_json_data(lists):
-              reduce lists[] as $list ({}; . * $list | .key);
+            def merge_json_data(list1; list2):
+              reduce list2[] as $item (list1;
+                . as $existing |
+                if ($existing | map(.key) | index($item.key)) == null then
+                  . + [$item]
+                else
+                  map(if .key == $item.key then $item else . end)
+                end
+              );
             
-            merge_json_data([.[0], .[1]])
+            merge_json_data(.[0]; .[1])
           ' merged_data.json temp.json > temp_merged.json
           
           mv temp_merged.json merged_data.json
