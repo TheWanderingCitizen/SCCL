@@ -11,11 +11,14 @@ const authHeader = {
     }
 };
 
-// 读取并转换 INI 文件为 JSON，处理 UTF-8 with BOM
+// 读取并转换 INI 文件为 JSON，处理 UTF-8 with BOM 并删除所有 "�"
 function convertIniToJson() {
     // 读取 INI 文件并处理 BOM
     const iniContentBuffer = fs.readFileSync('global.ini');
-    const iniContent = iconv.decode(iniContentBuffer, 'utf-8');
+    let iniContent = iconv.decode(iniContentBuffer, 'utf-8');
+
+    // 删除所有 "�" 字符
+    iniContent = iniContent.replace(/�/g, '');
 
     const lines = iniContent.split('\n');
     const jsonArray = [];
