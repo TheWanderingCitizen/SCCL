@@ -55,8 +55,14 @@ jobs:
                -H "Cookie: sid=s%3A5c672e8056d802c52d3398e1376174f0.Nvn4B0oVX%2BeUAIP7cSqwkqp7%2BIr8DwL1AhXhpRKs7r8" \
                "https://paratranz.cn/api/projects/8340/files/${file_id}/translation" > temp.json
           
-          # Merge into the merged_data.json file, combining entries with the same key
-          jq -s '.[0] as $merged | .[1][] | reduce . as $item ($merged; . + [$item] | group_by(.key) | map(add))' merged_data.json temp.json > temp_merged.json
+          # Merge using the logic that prioritizes later data in case of key conflict
+          jq -s '
+            def merge_json_data(lists):
+              reduce lists[] as $list ({}; . * $list | .key);
+            
+            merge_json_data([.[0], .[1]])
+          ' merged_data.json temp.json > temp_merged.json
+          
           mv temp_merged.json merged_data.json
         done
     
