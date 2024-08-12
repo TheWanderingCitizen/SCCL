@@ -54,13 +54,20 @@ jobs:
           curl -s -H "Authorization: 5c672e8056d802c52d3398e1376174f0" \
                -H "Cookie: sid=s%3A5c672e8056d802c52d3398e1376174f0.Nvn4B0oVX%2BeUAIP7cSqwkqp7%2BIr8DwL1AhXhpRKs7r8" \
                "https://paratranz.cn/api/projects/8340/files/${key}/translation" > temp.json
-          
-          # 使用 jq 合并数据，通过 key 合并内容
-          jq -s 'reduce .[] as $item ({}; .[$item.key] = (.[$item.key] // {} | . + $item))' merged_data.json temp.json > temp_merged.json
-          mv temp_merged.json merged_data.json
-        done
     
-        mv merged_data.json final.json
+          # 检查 temp.json 是否为有效的 JSON
+          if jq empty temp.json; then
+            # 使用 jq 合并数据，通过 key 合并内容
+            jq -s 'reduce .[] as $item ({}; .[$item.key] = (.[$item.key] // {} | . + $item))' merged_data.json temp.json > temp_merged.json
+            mv temp_merged.json merged_data.json
+          else
+            echo "Invalid JSON detected for key: $key"
+            exit 1
+          fi
+        done
+
+    mv merged_data.json final.json
+
 
     - name: Compare global JSON with final JSON
       run: |
