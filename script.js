@@ -69,11 +69,18 @@ function mergeJsonData(allData) {
     return Object.values(mergedData);
 }
 
-// 保存 global.json 内容到 difference.json
-function saveGlobalToDifference() {
+// 保存 global.json 中与 final.json 有差异的内容到 difference.json
+function saveDifferences() {
     const globalJson = JSON.parse(fs.readFileSync('global.json', 'utf-8'));
-    fs.writeFileSync('difference.json', JSON.stringify(globalJson, null, 2));
-    console.log('global.json 的内容已保存到 difference.json');
+    const finalJson = JSON.parse(fs.readFileSync('final.json', 'utf-8'));
+    
+    const differences = globalJson.filter(gItem => {
+        const fItem = finalJson.find(f => f.key === gItem.key);
+        return fItem && gItem.original !== fItem.original;
+    });
+
+    fs.writeFileSync('difference.json', JSON.stringify(differences, null, 2));
+    console.log('global.json 中的差异已保存到 difference.json');
 }
 
 // 主函数
@@ -94,8 +101,8 @@ async function main() {
         fs.writeFileSync('final.json', JSON.stringify(mergedData, null, 2));
         console.log('数据已合并并保存到 final.json');
 
-        // 将 global.json 内容保存到 difference.json
-        saveGlobalToDifference();
+        // 将 global.json 中的差异保存到 difference.json
+        saveDifferences();
     } catch (error) {
         console.error('发生错误:', error);
     }
