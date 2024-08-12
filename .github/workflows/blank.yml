@@ -20,10 +20,10 @@ jobs:
 
     - name: Convert INI to JSON
       run: |
-        # Convert INI to JSON format with UTF-8 BOM handling and filter control characters
+        # Convert INI to JSON format, removing illegal characters
         iconv -f UTF-8 -t UTF-8 -c global.ini | grep '=' | while IFS= read -r line; do
-          key=$(echo "$line" | cut -d '=' -f 1 | sed 's/^ *//;s/ *$//;s/"/\\"/g' | tr -d '\000-\037')
-          original=$(echo "$line" | cut -d '=' -f 2- | sed 's/^ *//;s/ *$//;s/"/\\"/g' | tr -d '\000-\037')
+          key=$(echo "$line" | cut -d '=' -f 1 | sed 's/["\\]/\\&/g; s/[^[:print:]]//g')
+          original=$(echo "$line" | cut -d '=' -f 2- | sed 's/["\\]/\\&/g; s/[^[:print:]]//g')
           echo "{\"key\": \"$key\", \"original\": \"$original\", \"translation\": \"\", \"context\": \"\"}," >> temp.json
         done
 
