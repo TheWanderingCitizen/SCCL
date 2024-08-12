@@ -56,7 +56,7 @@ jobs:
                "https://paratranz.cn/api/projects/8340/files/${key}/translation" > temp.json
           
           # 使用jq合并数据，通过key合并内容
-          jq -s 'reduce .[] as $item ({}; .[$item.key] = ($item + .[$item.key]))' merged_data.json temp.json > temp_merged.json
+          jq -s 'reduce .[] as $item ({}; .[$item.key] = (.[$item.key] // {} | . + $item))' merged_data.json temp.json > temp_merged.json
           mv temp_merged.json merged_data.json
         done
     
