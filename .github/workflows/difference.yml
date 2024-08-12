@@ -13,73 +13,18 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '18'  # 使用适合您的版本
+
     - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y jq curl
+        npm install axios ini
 
-    - name: Convert INI to JSON
+    - name: Run Node.js script
       run: |
-        # Initialize the JSON array
-        echo "[" > global.json
-
-        # Convert INI to JSON format, removing BOM and illegal characters
-        while IFS= read -r line; do
-          # Remove BOM if present
-          line=$(echo "$line" | sed 's/^\xEF\xBB\xBF//')
-          
-          if [[ "$line" == *"="* ]]; then
-            key=$(echo "$line" | cut -d '=' -f 1 | sed 's/["\\]/\\&/g; s/[^[:print:]]//g')
-            original=$(echo "$line" | cut -d '=' -f 2- | sed 's/["\\]/\\&/g; s/[^[:print:]]//g')
-            echo "  {\"key\": \"$key\", \"original\": \"$original\", \"translation\": \"\", \"context\": \"\"}," >> global.json
-          fi
-        done < <(iconv -f UTF-8 -t UTF-8 -c global.ini)
-
-        # Remove the trailing comma and close the JSON array
-        sed -i '$ s/,$//' global.json
-        echo "]" >> global.json
-
-    - name: Fetch and merge JSON data
-      run: |
-        # Fetch JSON data from API
-        curl -s -H "Authorization: 5c672e8056d802c52d3398e1376174f0" \
-             -H "Cookie: sid=s%3A5c672e8056d802c52d3398e1376174f0.Nvn4B0oVX%2BeUAIP7cSqwkqp7%2BIr8DwL1AhXhpRKs7r8" \
-             "https://paratranz.cn/api/projects/8340/files" > files.json
-    
-        # Initialize empty array for merging
-        echo '[]' > merged_data.json
-    
-        # Loop through each file ID and merge JSON data by key
-        jq -c '.[] | .id' files.json | while read -r file_id; do
-          curl -s -H "Authorization: 5c672e8056d802c52d3398e1376174f0" \
-               -H "Cookie: sid=s%3A5c672e8056d802c52d3398e1376174f0.Nvn4B0oVX%2BeUAIP7cSqwkqp7%2BIr8DwL1AhXhpRKs7r8" \
-               "https://paratranz.cn/api/projects/8340/files/${file_id}/translation" > temp.json
-          
-          # Merge using the logic that prioritizes later data in case of key conflict
-          jq -s '
-            def merge_json_data(list1; list2):
-              reduce list2[] as $item (list1;
-                . as $existing |
-                if ($existing | map(.key) | index($item.key)) == null then
-                  . + [$item]
-                else
-                  map(if .key == $item.key then $item else . end)
-                end
-              );
-            
-            merge_json_data(.[0]; .[1])
-          ' merged_data.json temp.json > temp_merged.json
-          
-          mv temp_merged.json merged_data.json
-        done
-    
-        mv merged_data.json final.json
-
-    - name: Compare global JSON with final JSON
-      run: |
-        # Compare global.json with final.json, keeping final.json's original text in case of differences
-        jq --argfile final final.json --argfile global global.json \
-          '[.[] as $g | $final[] | select(.key == $g.key and .original != $g.original)]' > difference.json
+        node script.js
 
     - name: Upload global.json
       uses: actions/upload-artifact@v3
