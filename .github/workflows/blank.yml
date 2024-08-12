@@ -24,7 +24,7 @@ jobs:
 
     - name: Merge JSON Data, Compare with Final, and Save Differences
       run: |
-        echo "
+        python -c "
 import requests
 import json
 import os
@@ -80,11 +80,8 @@ if os.path.exists(final_file_path):
     print('Differences saved to differences.json')
 else:
     print(f'No previous final.json found. Skipping difference calculation.')
-" > script.py
-
-        # 运行 Python 脚本
-        python script.py
-
+        "
+        
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
