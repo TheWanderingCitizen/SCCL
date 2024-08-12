@@ -38,14 +38,16 @@ function convertIniToJson() {
 }
 
 // 获取所有文件 ID 列表，并按创建时间排序
-async function fetchFileIds() {
+async function fetchFileData() {
     const response = await axios.get('https://paratranz.cn/api/projects/8340/files', authHeader);
     const files = response.data;
 
     // 根据 createdAt 时间戳进行排序，时间越近的排在前面
-    files.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    files.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-    return files.map(file => file.id);
+    // 按顺序获取所有文件的翻译数据
+    const allData = await Promise.all(files.map(file => fetchTranslationData(file.id)));
+    return allData;
 }
 
 // 根据文件 ID 获取翻译数据
@@ -88,11 +90,7 @@ async function main() {
     try {
         convertIniToJson();
 
-        const fileIds = await fetchFileIds();
-
-        // 并行获取所有文件的翻译数据
-        const allDataPromises = fileIds.map(fetchTranslationData);
-        const allData = await Promise.all(allDataPromises);
+        const allData = await fetchFileData();
 
         // 合并所有数据
         const mergedData = mergeJsonData(allData);
