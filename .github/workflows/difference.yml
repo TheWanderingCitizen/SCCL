@@ -71,17 +71,17 @@ jobs:
     - name: Upload global.json
       uses: actions/upload-artifact@v3
       with:
-        name: global-json
+        name: global.json
         path: global.json
-
+    
     - name: Upload final.json
       uses: actions/upload-artifact@v3
       with:
-        name: final-json
+        name: final.json
         path: final.json
-
+    
     - name: Upload difference.json
       uses: actions/upload-artifact@v3
       with:
-        name: difference-json
+        name: difference.json
         path: difference.json
