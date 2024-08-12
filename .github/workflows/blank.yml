@@ -1,4 +1,4 @@
-name: Merge JSON Data with Differences
+name: Convert INI to JSON and Compare with Final
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  merge-and-diff-json:
+  convert-compare-json:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,6 +17,22 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y jq curl
+
+    - name: Convert INI to JSON
+      run: |
+        # Convert INI to JSON format
+        cat global.ini | grep '=' | while IFS= read -r line; do
+          key=$(echo "$line" | cut -d '=' -f 1 | xargs)
+          original=$(echo "$line" | cut -d '=' -f 2- | xargs)
+          echo "{\"key\": \"$key\", \"original\": \"$original\", \"translation\": \"\", \"context\": \"\"}," >> temp.json
+        done
+
+        # Wrap the JSON objects in an array
+        echo "[" > global.json
+        cat temp.json >> global.json
+        sed -i '$ s/,$//' global.json # Remove trailing comma
+        echo "]" >> global.json
+        rm temp.json
 
     - name: Fetch and merge JSON data
       run: |
@@ -41,8 +57,16 @@ jobs:
 
         mv merged_data.json final.json
 
-    - name: Upload final JSON
+    - name: Compare global JSON with final JSON
+      run: |
+        # Compare global.json with final.json, keeping final.json's original text in case of differences
+        jq --argfile final final.json --argfile global global.json \
+          '[.[] as $g | $final[] | select(.key == $g.key and .original != $g.original)]' > difference.json
+
+    - name: Upload final JSON and Differences
       uses: actions/upload-artifact@v3
       with:
-        name: final-json
-        path: final.json
+        name: json-files
+        path: |
+          final.json
+          difference.json
