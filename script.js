@@ -69,14 +69,14 @@ function mergeJsonData(allData) {
     return Object.values(mergedData);
 }
 
-// 保存 global.json 中与 final.json 有差异的内容到 difference.json
+// 保存 global.json 中与 final.json 有差异的内容到 difference.json，忽略前后空格
 function saveDifferences() {
     const globalJson = JSON.parse(fs.readFileSync('global.json', 'utf-8'));
     const finalJson = JSON.parse(fs.readFileSync('final.json', 'utf-8'));
     
     const differences = globalJson.filter(gItem => {
         const fItem = finalJson.find(f => f.key === gItem.key);
-        return fItem && gItem.original !== fItem.original;
+        return fItem && gItem.original.trim() !== fItem.original.trim();
     });
 
     fs.writeFileSync('difference.json', JSON.stringify(differences, null, 2));
