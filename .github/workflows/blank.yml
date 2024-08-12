@@ -20,19 +20,21 @@ jobs:
 
     - name: Convert INI to JSON
       run: |
+        # Initialize the JSON array
+        echo "[" > global.json
+
         # Convert INI to JSON format, removing illegal characters
-        iconv -f UTF-8 -t UTF-8 -c global.ini | grep '=' | while IFS= read -r line; do
-          key=$(echo "$line" | cut -d '=' -f 1 | sed 's/["\\]/\\&/g; s/[^[:print:]]//g')
-          original=$(echo "$line" | cut -d '=' -f 2- | sed 's/["\\]/\\&/g; s/[^[:print:]]//g')
-          echo "{\"key\": \"$key\", \"original\": \"$original\", \"translation\": \"\", \"context\": \"\"}," >> temp.json
-        done
+        while IFS= read -r line; do
+          if [[ "$line" == *"="* ]]; then
+            key=$(echo "$line" | cut -d '=' -f 1 | sed 's/["\\]/\\&/g; s/[^[:print:]]//g')
+            original=$(echo "$line" | cut -d '=' -f 2- | sed 's/["\\]/\\&/g; s/[^[:print:]]//g')
+            echo "{\"key\": \"$key\", \"original\": \"$original\", \"translation\": \"\", \"context\": \"\"}," >> global.json
+          fi
+        done < <(iconv -f UTF-8 -t UTF-8 -c global.ini)
 
         # Remove the trailing comma and close the JSON array
-        echo "[" > global.json
-        cat temp.json >> global.json
         sed -i '$ s/,$//' global.json
         echo "]" >> global.json
-        rm temp.json
 
     - name: Fetch and merge JSON data
       run: |
@@ -63,10 +65,20 @@ jobs:
         jq --argfile final final.json --argfile global global.json \
           '[.[] as $g | $final[] | select(.key == $g.key and .original != $g.original)]' > difference.json
 
-    - name: Upload final JSON and Differences
+    - name: Upload global.json
       uses: actions/upload-artifact@v3
       with:
-        name: json-files
-        path: |
-          final.json
-          difference.json
+        name: global-json
+        path: global.json
+
+    - name: Upload final.json
+      uses: actions/upload-artifact@v3
+      with:
+        name: final-json
+        path: final.json
+
+    - name: Upload difference.json
+      uses: actions/upload-artifact@v3
+      with:
+        name: difference-json
+        path: difference.json
