@@ -16,8 +16,20 @@ function convertIniToJson() {
     const iniData = ini.parse(iniContent);
     const jsonArray = [];
 
-    for (const key in iniData) {
-        if (iniData.hasOwnProperty(key)) {
+    // 处理 INI 数据结构
+    Object.keys(iniData).forEach(key => {
+        if (typeof iniData[key] === 'object' && iniData[key] !== null) {
+            // 如果是嵌套对象，处理其内部键值对
+            Object.keys(iniData[key]).forEach(subKey => {
+                jsonArray.push({
+                    key: `${key}.${subKey}`,
+                    original: iniData[key][subKey],
+                    translation: '',
+                    context: ''
+                });
+            });
+        } else {
+            // 否则直接处理顶层键值对
             jsonArray.push({
                 key: key,
                 original: iniData[key],
@@ -25,7 +37,7 @@ function convertIniToJson() {
                 context: ''
             });
         }
-    }
+    });
 
     fs.writeFileSync('global.json', JSON.stringify(jsonArray, null, 2));
     console.log('INI 文件已转换为 JSON 并保存到 global.json');
