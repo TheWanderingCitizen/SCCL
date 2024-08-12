@@ -20,12 +20,12 @@ jobs:
 
     - name: Convert INI to JSON
       run: |
-        # Initialize the JSON array
+        # 初始化 JSON 数组
         echo "[" > global.json
 
-        # Convert INI to JSON format, removing BOM and illegal characters
+        # 转换 INI 到 JSON 格式，移除 BOM 和非法字符
         while IFS= read -r line; do
-          # Remove BOM if present
+          # 如果存在 BOM，移除它
           line=$(echo "$line" | sed 's/^\xEF\xBB\xBF//')
           
           if [[ "$line" == *"="* ]]; then
@@ -35,7 +35,7 @@ jobs:
           fi
         done < <(iconv -f UTF-8 -t UTF-8 -c global.ini)
 
-        # Remove the trailing comma and close the JSON array
+        # 移除尾随逗号并关闭 JSON 数组
         sed -i '$ s/,$//' global.json
         echo "]" >> global.json
 
@@ -55,7 +55,7 @@ jobs:
                -H "Cookie: sid=s%3A5c672e8056d802c52d3398e1376174f0.Nvn4B0oVX%2BeUAIP7cSqwkqp7%2BIr8DwL1AhXhpRKs7r8" \
                "https://paratranz.cn/api/projects/8340/files/${key}/translation" > temp.json
           
-          # 使用jq合并数据，通过key合并内容
+          # 使用 jq 合并数据，通过 key 合并内容
           jq -s 'reduce .[] as $item ({}; .[$item.key] = (.[$item.key] // {} | . + $item))' merged_data.json temp.json > temp_merged.json
           mv temp_merged.json merged_data.json
         done
@@ -64,7 +64,7 @@ jobs:
 
     - name: Compare global JSON with final JSON
       run: |
-        # Compare global.json with final.json, keeping final.json's original text in case of differences
+        # 比较 global.json 和 final.json，保留 final.json 的原始文本以防有差异
         jq --argfile final final.json --argfile global global.json \
           '[.[] as $g | $final[] | select(.key == $g.key and .original != $g.original)]' > difference.json
 
