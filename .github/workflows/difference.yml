@@ -66,8 +66,7 @@ jobs:
           fi
         done
 
-    mv merged_data.json final.json
-
+        mv merged_data.json final.json
 
     - name: Compare global JSON with final JSON
       run: |
