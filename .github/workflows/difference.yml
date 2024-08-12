@@ -20,12 +20,12 @@ jobs:
 
     - name: Convert INI to JSON
       run: |
-        # 初始化 JSON 数组
+        # Initialize the JSON array
         echo "[" > global.json
 
-        # 转换 INI 到 JSON 格式，移除 BOM 和非法字符
+        # Convert INI to JSON format, removing BOM and illegal characters
         while IFS= read -r line; do
-          # 如果存在 BOM，移除它
+          # Remove BOM if present
           line=$(echo "$line" | sed 's/^\xEF\xBB\xBF//')
           
           if [[ "$line" == *"="* ]]; then
@@ -35,42 +35,36 @@ jobs:
           fi
         done < <(iconv -f UTF-8 -t UTF-8 -c global.ini)
 
-        # 移除尾随逗号并关闭 JSON 数组
+        # Remove the trailing comma and close the JSON array
         sed -i '$ s/,$//' global.json
         echo "]" >> global.json
 
     - name: Fetch and merge JSON data
       run: |
-        # 从 API 获取 JSON 数据
+        # Fetch JSON data from API
         curl -s -H "Authorization: 5c672e8056d802c52d3398e1376174f0" \
              -H "Cookie: sid=s%3A5c672e8056d802c52d3398e1376174f0.Nvn4B0oVX%2BeUAIP7cSqwkqp7%2BIr8DwL1AhXhpRKs7r8" \
              "https://paratranz.cn/api/projects/8340/files" > files.json
     
-        # 初始化空数组用于合并
+        # Initialize empty array for merging
         echo '[]' > merged_data.json
     
-        # 循环遍历每个文件并合并 JSON 数据
-        jq -c '.[] | .key' files.json | while read -r key; do
+        # Loop through each file ID and merge JSON data by key
+        jq -c '.[] | .id' files.json | while read -r file_id; do
           curl -s -H "Authorization: 5c672e8056d802c52d3398e1376174f0" \
                -H "Cookie: sid=s%3A5c672e8056d802c52d3398e1376174f0.Nvn4B0oVX%2BeUAIP7cSqwkqp7%2BIr8DwL1AhXhpRKs7r8" \
-               "https://paratranz.cn/api/projects/8340/files/${key}/translation" > temp.json
-    
-          # 检查 temp.json 是否为有效的 JSON
-          if jq empty temp.json; then
-            # 使用 jq 合并数据，通过 key 合并内容
-            jq -s 'reduce .[] as $item ({}; .[$item.key] = (.[$item.key] // {} | . + $item))' merged_data.json temp.json > temp_merged.json
-            mv temp_merged.json merged_data.json
-          else
-            echo "Invalid JSON detected for key: $key"
-            exit 1
-          fi
+               "https://paratranz.cn/api/projects/8340/files/${file_id}/translation" > temp.json
+          
+          # Merge into the merged_data.json file, combining entries with the same key
+          jq -s '.[0] as $merged | .[1][] | reduce . as $item ($merged; . + [$item] | group_by(.key) | map(add))' merged_data.json temp.json > temp_merged.json
+          mv temp_merged.json merged_data.json
         done
-
+    
         mv merged_data.json final.json
 
     - name: Compare global JSON with final JSON
       run: |
-        # 比较 global.json 和 final.json，保留 final.json 的原始文本以防有差异
+        # Compare global.json with final.json, keeping final.json's original text in case of differences
         jq --argfile final final.json --argfile global global.json \
           '[.[] as $g | $final[] | select(.key == $g.key and .original != $g.original)]' > difference.json
 
