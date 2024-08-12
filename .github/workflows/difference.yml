@@ -16,30 +16,22 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v2
       with:
-        node-version: '18'  # 使用适合您的版本
+        node-version: '18'  # 使用适合您的 Node.js 版本
 
     - name: Install dependencies
       run: |
-        npm install axios ini
+        npm install iconv-lite ini axios
 
     - name: Run Node.js script
       run: |
         node script.js
 
-    - name: Upload global.json
+    - name: Create ZIP file of JSON outputs
+      run: |
+        zip output_files.zip global.json final.json difference.json
+
+    - name: Upload ZIP file
       uses: actions/upload-artifact@v3
       with:
-        name: global.json
-        path: global.json
-    
-    - name: Upload final.json
-      uses: actions/upload-artifact@v3
-      with:
-        name: final.json
-        path: final.json
-    
-    - name: Upload difference.json
-      uses: actions/upload-artifact@v3
-      with:
-        name: difference.json
-        path: difference.json
+        name: json_files_zip
+        path: output_files.zip
