@@ -1,6 +1,7 @@
 const axios = require('axios');
 const fs = require('fs');
 const ini = require('ini');
+const iconv = require('iconv-lite');
 
 // API 配置
 const authHeader = {
@@ -10,9 +11,12 @@ const authHeader = {
     }
 };
 
-// 读取并转换 INI 文件为 JSON
+// 读取并转换 INI 文件为 JSON，处理 UTF-8 with BOM
 function convertIniToJson() {
-    const iniContent = fs.readFileSync('global.ini', 'utf-8');
+    // 读取 INI 文件并处理 BOM
+    const iniContentBuffer = fs.readFileSync('global.ini');
+    const iniContent = iconv.decode(iniContentBuffer, 'utf-8');
+
     const lines = iniContent.split('\n');
     const jsonArray = [];
 
@@ -33,7 +37,10 @@ function convertIniToJson() {
         }
     });
 
-    fs.writeFileSync('global.json', JSON.stringify(jsonArray, null, 2));
+    // 保存为 JSON 文件，使用 UTF-8 with BOM 编码
+    const jsonContent = JSON.stringify(jsonArray, null, 2);
+    const jsonBuffer = iconv.encode(jsonContent, 'utf-8', { addBOM: true });
+    fs.writeFileSync('global.json', jsonBuffer);
     console.log('INI 文件已转换为 JSON 并保存到 global.json');
 }
 
