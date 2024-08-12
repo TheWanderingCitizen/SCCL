@@ -23,12 +23,15 @@ jobs:
         # Initialize the JSON array
         echo "[" > global.json
 
-        # Convert INI to JSON format, removing illegal characters
+        # Convert INI to JSON format, removing BOM and illegal characters
         while IFS= read -r line; do
+          # Remove BOM if present
+          line=$(echo "$line" | sed 's/^\xEF\xBB\xBF//')
+          
           if [[ "$line" == *"="* ]]; then
             key=$(echo "$line" | cut -d '=' -f 1 | sed 's/["\\]/\\&/g; s/[^[:print:]]//g')
             original=$(echo "$line" | cut -d '=' -f 2- | sed 's/["\\]/\\&/g; s/[^[:print:]]//g')
-            echo "{\"key\": \"$key\", \"original\": \"$original\", \"translation\": \"\", \"context\": \"\"}," >> global.json
+            echo "  {\"key\": \"$key\", \"original\": \"$original\", \"translation\": \"\", \"context\": \"\"}," >> global.json
           fi
         done < <(iconv -f UTF-8 -t UTF-8 -c global.ini)
 
