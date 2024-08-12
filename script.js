@@ -13,26 +13,20 @@ const authHeader = {
 // 读取并转换 INI 文件为 JSON
 function convertIniToJson() {
     const iniContent = fs.readFileSync('global.ini', 'utf-8');
-    const iniData = ini.parse(iniContent);
+    const lines = iniContent.split('\n');
     const jsonArray = [];
 
-    // 处理 INI 数据结构
-    Object.keys(iniData).forEach(key => {
-        if (typeof iniData[key] === 'object' && iniData[key] !== null) {
-            // 如果是嵌套对象，处理其内部键值对
-            Object.keys(iniData[key]).forEach(subKey => {
-                jsonArray.push({
-                    key: `${key}.${subKey}`,
-                    original: iniData[key][subKey],
-                    translation: '',
-                    context: ''
-                });
-            });
-        } else {
-            // 否则直接处理顶层键值对
+    // 处理 INI 文件的每一行
+    lines.forEach(line => {
+        // 去除可能存在的BOM
+        line = line.replace(/^\uFEFF/, '');
+
+        if (line.includes('=')) {
+            const [key, ...valueParts] = line.split('=');
+            const original = valueParts.join('=').trim(); // 处理可能包含等号的值
             jsonArray.push({
-                key: key,
-                original: iniData[key],
+                key: key.trim(),
+                original: original,
                 translation: '',
                 context: ''
             });
@@ -76,7 +70,8 @@ function saveDifferences() {
     
     const differences = globalJson.filter(gItem => {
         const fItem = finalJson.find(f => f.key === gItem.key);
-        return fItem && gItem.original.trim() !== fItem.original.trim();
+        // 比较时移除空白符并处理换行符
+        return fItem && gItem.original.trim().replace(/\s+/g, ' ') !== fItem.original.trim().replace(/\s+/g, ' ');
     });
 
     fs.writeFileSync('difference.json', JSON.stringify(differences, null, 2));
