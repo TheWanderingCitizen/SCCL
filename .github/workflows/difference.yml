@@ -16,7 +16,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4  # 更新到 v3 版本
       with:
-        node-version: '18'  # 使用适合您的 Node.js 版本
+        node-version: '20'  # 使用适合您的 Node.js 版本
 
     - name: Install dependencies
       run: |
