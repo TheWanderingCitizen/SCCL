@@ -30,7 +30,7 @@ jobs:
 
     - name: Create ZIP file of JSON outputs
       run: |
-        zip output_files.zip global.json final.json difference.json
+        zip json_files_zip global.json final.json difference.json
 
     - name: Upload ZIP file
       uses: actions/upload-artifact@v4  # 使用 v4 版本
