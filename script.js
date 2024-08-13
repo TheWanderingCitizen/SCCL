@@ -6,7 +6,7 @@ const iconv = require('iconv-lite');
 // API 配置
 const authHeader = {
     headers: {
-        'Authorization': ${{AUTHORIZATION}}
+        'Authorization': process.env.AUTHORIZATION
     }
 };
 
