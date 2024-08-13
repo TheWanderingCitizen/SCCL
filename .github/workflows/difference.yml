@@ -11,12 +11,12 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4  # 更新到 v3 版本
+      uses: actions/checkout@v4  # 使用 v4 版本
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4  # 更新到 v3 版本
+      uses: actions/setup-node@v4  # 使用 v4 版本
       with:
-        node-version: '20'  # 使用适合您的 Node.js 版本
+        node-version: '20'  # 使用 Node.js 20 版本
 
     - name: Install dependencies
       run: |
@@ -25,13 +25,14 @@ jobs:
     - name: Run Node.js script
       run: |
         node script.js
+      env:
+        AUTHORIZATION: ${{ secrets.AUTHORIZATION }}  # 从 GitHub Secrets 获取 AUTHORIZATION
 
     - name: Create ZIP file of JSON outputs
       run: |
         zip output_files.zip global.json final.json difference.json
 
     - name: Upload ZIP file
-      uses: actions/upload-artifact@v4  # 更新到 v4 版本
+      uses: actions/upload-artifact@v4  # 使用 v4 版本
       with:
         name: json_files_zip
-        path: output_files.zip
