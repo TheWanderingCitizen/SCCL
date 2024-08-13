@@ -6,28 +6,24 @@ const iconv = require('iconv-lite');
 // API 配置
 const authHeader = {
     headers: {
-        'Authorization': '5c672e8056d802c52d3398e1376174f0',
-        'Cookie': 'sid=s%3A5c672e8056d802c52d3398e1376174f0.Nvn4B0oVX%2BeUAIP7cSqwkqp7%2BIr8DwL1AhXhpRKs7r8'
+        'Authorization': ${{AUTHORIZATION}}
     }
 };
 
-// 读取并转换 INI 文件为 JSON，处理 UTF-8 with BOM 并删除所有 "�"
+// 读取并转换 INI 文件为 JSON
 function convertIniToJson() {
     // 读取 INI 文件并处理 BOM
     const iniContentBuffer = fs.readFileSync('global.ini');
     let iniContent = iconv.decode(iniContentBuffer, 'utf-8');
 
-    // 删除所有 "�" 字符
-    iniContent = iniContent.replace(/�/g, '');
+    // 将所有单独的 A0（即非 C2 A0）替换为 C2 A0
+    iniContent = iniContent.replace(/[\xA0](?![\xC2])/g, '\xC2\xA0');
 
     const lines = iniContent.split('\n');
     const jsonArray = [];
 
     // 处理 INI 文件的每一行
     lines.forEach(line => {
-        // 去除可能存在的BOM
-        line = line.replace(/^\uFEFF/, '');
-
         if (line.includes('=')) {
             const [key, ...valueParts] = line.split('=');
             const original = valueParts.join('=').trim(); // 处理可能包含等号的值
