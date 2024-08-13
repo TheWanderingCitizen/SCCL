@@ -26,13 +26,13 @@ jobs:
       run: |
         node script.js
       env:
-        AUTHORIZATION: ${{ secrets.AUTHORIZATION }}  # 从 GitHub Secrets 获取 AUTHORIZATION
-
-    - name: Create ZIP file of JSON outputs
-      run: |
-        zip json_files_zip global.json final.json difference.json
-
-    - name: Upload ZIP file
+        AUTHORIZATION: ${{ secrets.AUTHORIZATION }}
+        
+    - name: Upload JSON files
       uses: actions/upload-artifact@v4  # 使用 v4 版本
       with:
         name: json_files_zip
+        path: |
+          global.json
+          final.json
+          difference.json
