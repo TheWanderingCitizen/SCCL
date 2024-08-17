@@ -13,17 +13,23 @@ function convertIniToJson() {
     // 读取 INI 文件的二进制数据
     const iniContentBuffer = fs.readFileSync('global.ini');
 
-    // 将 Buffer 转换为十六进制字符串，方便进行字节级别的替换
-    let hexString = iniContentBuffer.toString('hex');
+    // 创建一个新的缓冲区来存储替换后的内容
+    let resultBuffer = Buffer.alloc(0);
 
-    // 替换单独的 A0 为 C2 A0（先查找非 C2 A0 的 A0）
-    hexString = hexString.replace(/a0(?!c2)/g, 'a0c2');
+    // 遍历 iniContentBuffer 中的每个字节
+    for (let i = 0; i < iniContentBuffer.length; i++) {
+        // 检查当前字节是否为 A0 并且不是 C2 A0 的一部分
+        if (iniContentBuffer[i] === 0xA0 && (i === 0 || iniContentBuffer[i - 1] !== 0xC2)) {
+            // 将单独的 A0 替换为 C2 A0
+            resultBuffer = Buffer.concat([resultBuffer, Buffer.from([0xC2, 0xA0])]);
+        } else {
+            // 否则，保留原字节
+            resultBuffer = Buffer.concat([resultBuffer, Buffer.from([iniContentBuffer[i]])]);
+        }
+    }
 
-    // 将十六进制字符串转换回 Buffer
-    const updatedBuffer = Buffer.from(hexString, 'hex');
-
-    // 转换为字符串（假设 INI 文件是 UTF-8 编码）
-    const iniContent = updatedBuffer.toString('utf-8');
+    // 将替换后的缓冲区转换为字符串
+    const iniContent = resultBuffer.toString('utf-8');
 
     const lines = iniContent.split('\n');
     const jsonArray = [];
