@@ -23,7 +23,7 @@ async function fetchAndMergeTranslations() {
     for (const file of files) {
         const fileData = await fetchTranslationData(file.id);
 
-        if (file.name === "3d替换.json") {
+        if (file.name === "汉化规则/3d替换.json") {
             // 如果文件名为 "3d替换.json"，则提取其内容
             replace3dData = {};
             fileData.forEach(item => {
