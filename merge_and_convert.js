@@ -68,22 +68,15 @@ async function main() {
     try {
         const { mergedData, translationRules, ruleFiles } = await fetchAndMergeTranslations();
 
-        // 从 Paratranz 获取 3d替换 文件
-        const replace3dFile = files.find(file => file.name === "3d替换.json");
-        const replace3dData = await fetchTranslationData(replace3dFile.id);
-
-        // 将 3d替换.json 转换为字典
-        const replace3dDict = {};
-        replace3dData.forEach(item => {
-            replace3dDict[item.key] = item.original;
-        });
+        // 从本地加载 3d替换.json
+        const replace3dData = JSON.parse(fs.readFileSync('3d替换.json', 'utf-8'));
 
         // 为每个汉化规则生成一个对应的 INI 文件
         for (const ruleFileName of ruleFiles) {
             const rules = translationRules[ruleFileName];
 
             // 将拼合后的 JSON 和 3d替换.json 以及当前的汉化规则组合起来生成 INI
-            const combinedRules = { ...replace3dDict, ...rules };
+            const combinedRules = { ...replace3dData, ...rules };
             const iniContent = convertJsonToIni(mergedData, combinedRules);
 
             // 将转换后的 INI 内容保存到文件
