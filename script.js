@@ -49,10 +49,13 @@ async function fetchFileData() {
     const files = response.data;
 
     // 根据 createdAt 时间戳进行排序，时间越近的排在前面
-    files.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    files.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // 过滤掉 "folder" 为 "汉化规则" 的文件
+    const filteredFiles = files.filter(file => file.folder !== "汉化规则");
 
     // 按顺序获取所有文件的翻译数据
-    const allData = await Promise.all(files.map(file => fetchTranslationData(file.id)));
+    const allData = await Promise.all(filteredFiles.map(file => fetchTranslationData(file.id)));
     return allData;
 }
 
