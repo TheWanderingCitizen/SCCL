@@ -11,8 +11,11 @@ const authHeader = {
 
 // 从 Paratranz 获取所有文件并拼合为一个 JSON 对象，同时处理 "汉化规则" 文件和 "汉化规则/3d替换.json"
 async function fetchAndMergeTranslations() {
+    console.log("Fetching files from Paratranz...");
     const response = await axios.get('https://paratranz.cn/api/projects/8340/files', authHeader);
     const files = response.data;
+
+    console.log(`Fetched ${files.length} files.`);
 
     // 拼合后的数据和汉化规则
     const mergedData = {};
@@ -22,6 +25,7 @@ async function fetchAndMergeTranslations() {
 
     // 遍历文件，按需要进行处理
     for (const file of files) {
+        console.log(`Processing file: ${file.name}`);
         const fileData = await fetchTranslationData(file.id);
 
         if (file.name === "汉化规则/3d替换.json") {
@@ -66,7 +70,7 @@ function convertJsonToIni(jsonData, translationRules) {
 
     Object.keys(jsonData).forEach(key => {
         let value = jsonData[key];
-        if (translationRules && translationRules[key]) {
+        if (translationRules[key]) {
             // 如果存在汉化规则，应用规则进行替换
             value = translationRules[key];
         }
@@ -74,22 +78,6 @@ function convertJsonToIni(jsonData, translationRules) {
     });
 
     return iniContent;
-}
-
-// 生成最终 JSON 文件
-function generateFinalJson(jsonData, replace3dData) {
-    const finalJson = {};
-
-    Object.keys(jsonData).forEach(key => {
-        let value = jsonData[key];
-        if (replace3dData && replace3dData[key]) {
-            // 如果存在 3d替换规则，应用规则进行替换
-            value = replace3dData[key];
-        }
-        finalJson[key] = value;
-    });
-
-    return finalJson;
 }
 
 // 确保目录存在
@@ -129,11 +117,13 @@ async function main() {
             console.log(`拼合后的翻译内容已转换为 INI 格式并保存到 ${outputFileName}`);
         }
 
-        // 生成并保存最终的 JSON 文件
-        const finalJson = generateFinalJson(mergedData, replace3dData);
-        const jsonOutputFileName = `final_output.json`;
-        fs.writeFileSync(jsonOutputFileName, JSON.stringify(finalJson, null, 2), { encoding: 'utf-8' });
-        console.log(`Final JSON file has been generated and saved to ${jsonOutputFileName}`);
+        // 生成只应用 "3d替换.json" 的 final.ini 文件
+        console.log("Generating final.ini with only 3d替换.json applied.");
+        const finalIniContent = convertJsonToIni(mergedData, replace3dData);
+        const finalOutputFileName = 'final_output/final.ini';
+        ensureDirectoryExistence(finalOutputFileName);
+        fs.writeFileSync(finalOutputFileName, finalIniContent, { encoding: 'utf-8' });
+        console.log(`Generated final.ini and saved to ${finalOutputFileName}`);
 
     } catch (error) {
         console.error('发生错误:', error);
