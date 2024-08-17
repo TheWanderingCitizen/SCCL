@@ -8,7 +8,7 @@ const authHeader = {
     }
 };
 
-// 从 Paratranz 获取所有文件并拼合为一个 JSON 对象，同时处理 "汉化规则" 文件
+// 从 Paratranz 获取所有文件并拼合为一个 JSON 对象，同时处理 "汉化规则" 文件和 "3d替换.json"
 async function fetchAndMergeTranslations() {
     const response = await axios.get('https://paratranz.cn/api/projects/8340/files', authHeader);
     const files = response.data;
@@ -17,11 +17,19 @@ async function fetchAndMergeTranslations() {
     const mergedData = {};
     const translationRules = {};
     const ruleFiles = [];
+    let replace3dData = null;  // 用于存储 3d替换.json 的内容
 
     // 遍历文件，按需要进行处理
     for (const file of files) {
         const fileData = await fetchTranslationData(file.id);
-        if (file.folder === "汉化规则") {
+
+        if (file.name === "3d替换.json") {
+            // 如果文件名为 "3d替换.json"，则提取其内容
+            replace3dData = {};
+            fileData.forEach(item => {
+                replace3dData[item.key] = item.original;
+            });
+        } else if (file.folder === "汉化规则") {
             // 处理 "汉化规则" 文件，将其保存到 translationRules 中
             const rule = {};
             fileData.forEach(item => {
@@ -37,7 +45,7 @@ async function fetchAndMergeTranslations() {
         }
     }
 
-    return { mergedData, translationRules, ruleFiles };
+    return { mergedData, translationRules, ruleFiles, replace3dData };
 }
 
 // 根据文件 ID 获取翻译数据
@@ -66,16 +74,18 @@ function convertJsonToIni(jsonData, translationRules) {
 // 主函数
 async function main() {
     try {
-        const { mergedData, translationRules, ruleFiles } = await fetchAndMergeTranslations();
+        const { mergedData, translationRules, ruleFiles, replace3dData } = await fetchAndMergeTranslations();
 
-        // 从本地加载 3d替换.json
-        const replace3dData = JSON.parse(fs.readFileSync('3d替换.json', 'utf-8'));
+        // 确保已获取到 3d替换.json 的数据
+        if (!replace3dData) {
+            throw new Error("3d替换.json 未找到");
+        }
 
         // 为每个汉化规则生成一个对应的 INI 文件
         for (const ruleFileName of ruleFiles) {
             const rules = translationRules[ruleFileName];
 
-            // 将拼合后的 JSON 和 3d替换.json 以及当前的汉化规则组合起来生成 INI
+            // 将拼合后的 JSON 应用 3d替换.json 和当前的汉化规则生成 INI
             const combinedRules = { ...replace3dData, ...rules };
             const iniContent = convertJsonToIni(mergedData, combinedRules);
 
