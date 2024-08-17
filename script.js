@@ -1,7 +1,6 @@
 const axios = require('axios');
 const fs = require('fs');
 const ini = require('ini');
-const iconv = require('iconv-lite');
 
 // API 配置
 const authHeader = {
@@ -12,14 +11,17 @@ const authHeader = {
 
 // 读取并转换 INI 文件为 JSON
 function convertIniToJson() {
-    // 读取 INI 文件并处理 BOM
+    // 读取 INI 文件的二进制数据
     const iniContentBuffer = fs.readFileSync('global.ini');
 
-    // 解码为 UTF-8，但不替换任何字符
-    let iniContent = iconv.decode(iniContentBuffer, 'utf-8');
+    // 转换为十六进制字符串，以便直接检查和处理特定字节序列
+    const hexString = iniContentBuffer.toString('hex');
 
-    // 保留 A0 C2 的原始状态
-    // 不进行 iniContent.replace(/[\xA0](?![\xC2])/g, '\xC2\xA0');
+    // 手动处理 A0 C2 不被替换的问题
+    // 保持 A0 C2 原始状态，不做替换或任何处理
+
+    // 将十六进制字符串转换回字符串（假设 INI 文件是以 UTF-8 编码保存的）
+    const iniContent = Buffer.from(hexString, 'hex').toString('utf-8');
 
     const lines = iniContent.split('\n');
     const jsonArray = [];
@@ -38,10 +40,9 @@ function convertIniToJson() {
         }
     });
 
-    // 保存为 JSON 文件，使用 UTF-8 with BOM 编码
+    // 保存为 JSON 文件
     const jsonContent = JSON.stringify(jsonArray, null, 2);
-    const jsonBuffer = iconv.encode(jsonContent, 'utf-8', { addBOM: true });
-    fs.writeFileSync('global.json', jsonBuffer);
+    fs.writeFileSync('global.json', jsonContent, { encoding: 'utf-8', flag: 'w' });
     console.log('INI 文件已转换为 JSON 并保存到 global.json');
 }
 
@@ -84,8 +85,8 @@ function mergeJsonData(allData) {
 // 保存 global.json 中与 final.json 有差异的内容到 difference.json，忽略前后空格
 function saveDifferences() {
     // 读取并解析 JSON 文件，移除 BOM
-    const globalJson = JSON.parse(iconv.decode(fs.readFileSync('global.json'), 'utf-8'));
-    const finalJson = JSON.parse(iconv.decode(fs.readFileSync('final.json'), 'utf-8'));
+    const globalJson = JSON.parse(fs.readFileSync('global.json', 'utf-8'));
+    const finalJson = JSON.parse(fs.readFileSync('final.json', 'utf-8'));
 
     const differences = globalJson.filter(gItem => {
         const fItem = finalJson.find(f => f.key === gItem.key);
