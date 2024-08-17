@@ -99,6 +99,10 @@ async function main() {
             throw new Error("汉化规则/3d替换.json 未找到");
         }
 
+        // 确保输出目录存在
+        const outputDir = 'final_output';
+        ensureDirectoryExistence(outputDir);
+
         // 为每个汉化规则生成一个对应的 INI 文件
         for (const ruleFileName of ruleFiles) {
             console.log(`Generating INI file for rule: ${ruleFileName}`);
@@ -109,7 +113,7 @@ async function main() {
             const iniContent = convertJsonToIni(mergedData, combinedRules);
 
             // 构造输出文件路径
-            const outputFileName = `final_output_${ruleFileName.replace('汉化规则/', '').replace('.json', '')}.ini`;
+            const outputFileName = path.join(outputDir, `final_output_${ruleFileName.replace('汉化规则/', '').replace('.json', '')}.ini`);
             ensureDirectoryExistence(outputFileName);
 
             // 将转换后的 INI 内容保存到文件
@@ -120,8 +124,7 @@ async function main() {
         // 生成只应用 "3d替换.json" 的 final.ini 文件
         console.log("Generating final.ini with only 3d替换.json applied.");
         const finalIniContent = convertJsonToIni(mergedData, replace3dData);
-        const finalOutputFileName = 'final_output/final.ini';
-        ensureDirectoryExistence(finalOutputFileName);
+        const finalOutputFileName = path.join(outputDir, 'final.ini');
         fs.writeFileSync(finalOutputFileName, finalIniContent, { encoding: 'utf-8' });
         console.log(`Generated final.ini and saved to ${finalOutputFileName}`);
 
