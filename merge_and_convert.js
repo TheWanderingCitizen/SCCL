@@ -1,5 +1,6 @@
 const axios = require('axios');
 const fs = require('fs');
+const path = require('path');
 
 // API 配置
 const authHeader = {
@@ -8,7 +9,7 @@ const authHeader = {
     }
 };
 
-// 从 Paratranz 获取所有文件并拼合为一个 JSON 对象，同时处理 "汉化规则" 文件和 "3d替换.json"
+// 从 Paratranz 获取所有文件并拼合为一个 JSON 对象，同时处理 "汉化规则" 文件和 "汉化规则/3d替换.json"
 async function fetchAndMergeTranslations() {
     const response = await axios.get('https://paratranz.cn/api/projects/8340/files', authHeader);
     const files = response.data;
@@ -17,20 +18,20 @@ async function fetchAndMergeTranslations() {
     const mergedData = {};
     const translationRules = {};
     const ruleFiles = [];
-    let replace3dData = null;  // 用于存储 3d替换.json 的内容
+    let replace3dData = null;  // 用于存储 "汉化规则/3d替换.json" 的内容
 
     // 遍历文件，按需要进行处理
     for (const file of files) {
         const fileData = await fetchTranslationData(file.id);
 
         if (file.name === "汉化规则/3d替换.json") {
-            // 如果文件名为 "3d替换.json"，则提取其内容
+            // 如果文件名为 "汉化规则/3d替换.json"，则提取其内容
             replace3dData = {};
             fileData.forEach(item => {
                 replace3dData[item.key] = item.original;
             });
-        } else if (file.folder === "汉化规则") {
-            // 处理 "汉化规则" 文件，将其保存到 translationRules 中
+        } else if (file.folder === "汉化规则" && file.name !== "汉化规则/3d替换.json") {
+            // 处理其他 "汉化规则" 文件，将其保存到 translationRules 中
             const rule = {};
             fileData.forEach(item => {
                 rule[item.key] = item.original;
@@ -71,26 +72,37 @@ function convertJsonToIni(jsonData, translationRules) {
     return iniContent;
 }
 
+// 确保目录存在
+function ensureDirectoryExistence(filePath) {
+    const dirname = path.dirname(filePath);
+    if (!fs.existsSync(dirname)) {
+        fs.mkdirSync(dirname, { recursive: true });
+    }
+}
+
 // 主函数
 async function main() {
     try {
         const { mergedData, translationRules, ruleFiles, replace3dData } = await fetchAndMergeTranslations();
 
-        // 确保已获取到 3d替换.json 的数据
+        // 确保已获取到 "汉化规则/3d替换.json" 的数据
         if (!replace3dData) {
-            throw new Error("3d替换.json 未找到");
+            throw new Error("汉化规则/3d替换.json 未找到");
         }
 
         // 为每个汉化规则生成一个对应的 INI 文件
         for (const ruleFileName of ruleFiles) {
             const rules = translationRules[ruleFileName];
 
-            // 将拼合后的 JSON 应用 3d替换.json 和当前的汉化规则生成 INI
+            // 将拼合后的 JSON 应用 "汉化规则/3d替换.json" 和当前的汉化规则生成 INI
             const combinedRules = { ...replace3dData, ...rules };
             const iniContent = convertJsonToIni(mergedData, combinedRules);
 
+            // 构造输出文件路径
+            const outputFileName = `final_output_${ruleFileName.replace('汉化规则/', '').replace('.json', '')}.ini`;
+            ensureDirectoryExistence(outputFileName);
+
             // 将转换后的 INI 内容保存到文件
-            const outputFileName = `final_output_${ruleFileName.replace('.json', '')}.ini`;
             fs.writeFileSync(outputFileName, iniContent, { encoding: 'utf-8' });
             console.log(`拼合后的翻译内容已转换为 INI 格式并保存到 ${outputFileName}`);
         }
