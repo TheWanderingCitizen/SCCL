@@ -14,11 +14,12 @@ const authHeader = {
 function convertIniToJson() {
     // 读取 INI 文件并处理 BOM
     const iniContentBuffer = fs.readFileSync('global.ini');
+
+    // 解码为 UTF-8，但不替换任何字符
     let iniContent = iconv.decode(iniContentBuffer, 'utf-8');
 
-    // 保持 A0 C2 不变
-    // 将所有单独的 A0（即非 C2 A0）替换为 C2 A0
-    iniContent = iniContent.replace(/[\xA0](?![\xC2])/g, '\xC2\xA0');
+    // 保留 A0 C2 的原始状态
+    // 不进行 iniContent.replace(/[\xA0](?![\xC2])/g, '\xC2\xA0');
 
     const lines = iniContent.split('\n');
     const jsonArray = [];
