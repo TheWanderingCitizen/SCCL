@@ -16,6 +16,7 @@ function convertIniToJson() {
     const iniContentBuffer = fs.readFileSync('global.ini');
     let iniContent = iconv.decode(iniContentBuffer, 'utf-8');
 
+    // 保持 A0 C2 不变
     // 将所有单独的 A0（即非 C2 A0）替换为 C2 A0
     iniContent = iniContent.replace(/[\xA0](?![\xC2])/g, '\xC2\xA0');
 
@@ -61,7 +62,7 @@ async function fetchFileData() {
 
 // 根据文件 ID 获取翻译数据
 async function fetchTranslationData(fileId) {
-    const url = https://paratranz.cn/api/projects/8340/files/${fileId}/translation;
+    const url = `https://paratranz.cn/api/projects/8340/files/${fileId}/translation`;
     const response = await axios.get(url, authHeader);
     return response.data;
 }
@@ -84,7 +85,7 @@ function saveDifferences() {
     // 读取并解析 JSON 文件，移除 BOM
     const globalJson = JSON.parse(iconv.decode(fs.readFileSync('global.json'), 'utf-8'));
     const finalJson = JSON.parse(iconv.decode(fs.readFileSync('final.json'), 'utf-8'));
-    
+
     const differences = globalJson.filter(gItem => {
         const fItem = finalJson.find(f => f.key === gItem.key);
         // 比较时移除空白符并处理换行符
