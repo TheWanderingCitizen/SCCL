@@ -19,13 +19,19 @@ jobs:
     - name: Install dependencies
       run: npm install axios
 
-    - name: Merge translations and convert to final INI
+    - name: Merge translations and convert to INI and JSON
       run: node merge_and_convert.js
       env:
         AUTHORIZATION: ${{ secrets.AUTHORIZATION }}
 
     - name: Upload final INI file
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: final-ini-file
         path: final_output.ini
+
+    - name: Upload final JSON file
+      uses: actions/upload-artifact@v4
+      with:
+        name: final-json-file
+        path: final_output.json
