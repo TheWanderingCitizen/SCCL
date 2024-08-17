@@ -17,7 +17,7 @@ function convertIniToJson() {
     let hexString = iniContentBuffer.toString('hex');
 
     // 替换单独的 A0 为 C2 A0（先查找非 C2 A0 的 A0）
-    hexString = hexString.replace(/a0(?!c2)/g, 'c2a0');
+    hexString = hexString.replace(/a0(?!c2)/g, 'a0c2');
 
     // 将十六进制字符串转换回 Buffer
     const updatedBuffer = Buffer.from(hexString, 'hex');
