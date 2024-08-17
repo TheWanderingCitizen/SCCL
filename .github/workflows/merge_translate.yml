@@ -20,7 +20,6 @@ jobs:
       run: npm install axios
 
     - name: Merge translations and convert to INI
-      run: 
-        node merge_and_convert.js
+      run: node merge_and_convert.js
       env:
         AUTHORIZATION: ${{ secrets.AUTHORIZATION }}
