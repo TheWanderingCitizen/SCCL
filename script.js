@@ -61,7 +61,7 @@ async function fetchFileData() {
 
 // 根据文件 ID 获取翻译数据
 async function fetchTranslationData(fileId) {
-    const url = `https://paratranz.cn/api/projects/8340/files/${fileId}/translation`;
+    const url = https://paratranz.cn/api/projects/8340/files/${fileId}/translation;
     const response = await axios.get(url, authHeader);
     return response.data;
 }
