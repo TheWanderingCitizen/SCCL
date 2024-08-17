@@ -1,0 +1,23 @@
+name: Merge and Convert Translations
+
+on:
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  merge_and_convert:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20' # 使用 Node.js 版本
+
+    - name: Install dependencies
+      run: npm install axios
+
+    - name: Merge translations and convert to INI
+      run: node merge_and_convert.js
