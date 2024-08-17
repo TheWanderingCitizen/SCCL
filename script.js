@@ -1,6 +1,5 @@
 const axios = require('axios');
 const fs = require('fs');
-const ini = require('ini');
 
 // API 配置
 const authHeader = {
@@ -14,14 +13,17 @@ function convertIniToJson() {
     // 读取 INI 文件的二进制数据
     const iniContentBuffer = fs.readFileSync('global.ini');
 
-    // 转换为十六进制字符串，以便直接检查和处理特定字节序列
-    const hexString = iniContentBuffer.toString('hex');
+    // 将 Buffer 转换为十六进制字符串，方便进行字节级别的替换
+    let hexString = iniContentBuffer.toString('hex');
 
-    // 手动处理 A0 C2 不被替换的问题
-    // 保持 A0 C2 原始状态，不做替换或任何处理
+    // 替换单独的 A0 为 C2 A0（先查找非 C2 A0 的 A0）
+    hexString = hexString.replace(/a0(?!c2)/g, 'c2a0');
 
-    // 将十六进制字符串转换回字符串（假设 INI 文件是以 UTF-8 编码保存的）
-    const iniContent = Buffer.from(hexString, 'hex').toString('utf-8');
+    // 将十六进制字符串转换回 Buffer
+    const updatedBuffer = Buffer.from(hexString, 'hex');
+
+    // 转换为字符串（假设 INI 文件是 UTF-8 编码）
+    const iniContent = updatedBuffer.toString('utf-8');
 
     const lines = iniContent.split('\n');
     const jsonArray = [];
