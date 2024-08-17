@@ -1,4 +1,4 @@
-name: Convert INI to JSON and Compare with Final
+name: 对比ini差异
 
 on:
   push:
