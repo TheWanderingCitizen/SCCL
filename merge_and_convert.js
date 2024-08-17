@@ -28,20 +28,20 @@ async function fetchAndMergeTranslations() {
             // 如果文件名为 "汉化规则/3d替换.json"，则提取其内容
             replace3dData = {};
             fileData.forEach(item => {
-                replace3dData[item.key] = item.original;
+                replace3dData[item.key] = item.translation;
             });
         } else if (file.folder === "汉化规则" && file.name !== "汉化规则/3d替换.json") {
             // 处理其他 "汉化规则" 文件，将其保存到 translationRules 中
             const rule = {};
             fileData.forEach(item => {
-                rule[item.key] = item.original;
+                rule[item.key] = item.translation;
             });
             translationRules[file.name] = rule;  // 以文件名为 key 保存规则
             ruleFiles.push(file.name);  // 保存规则文件名
         } else {
             // 非 "汉化规则" 文件，正常合并
             fileData.forEach(item => {
-                mergedData[item.key] = item.original;
+                mergedData[item.key] = item.translation;
             });
         }
     }
