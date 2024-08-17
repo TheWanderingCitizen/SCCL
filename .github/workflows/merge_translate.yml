@@ -1,4 +1,4 @@
-name: Merge and Convert Translations
+name: 发行汉化版本
 
 on:
   workflow_dispatch: # 允许手动触发
