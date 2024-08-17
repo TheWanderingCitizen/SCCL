@@ -13,18 +13,27 @@ function convertIniToJson() {
     // 读取 INI 文件的二进制数据
     const iniContentBuffer = fs.readFileSync('global.ini');
 
+    // 计算替换后的缓冲区大小
+    let estimatedSize = iniContentBuffer.length;
+    for (let i = 0; i < iniContentBuffer.length; i++) {
+        if (iniContentBuffer[i] === 0xA0 && (i === 0 || iniContentBuffer[i - 1] !== 0xC2)) {
+            estimatedSize++;
+        }
+    }
+
     // 创建一个新的缓冲区来存储替换后的内容
-    let resultBuffer = Buffer.alloc(0);
+    const resultBuffer = Buffer.alloc(estimatedSize);
+    let offset = 0;
 
     // 遍历 iniContentBuffer 中的每个字节
     for (let i = 0; i < iniContentBuffer.length; i++) {
-        // 检查当前字节是否为 A0 并且不是 C2 A0 的一部分
         if (iniContentBuffer[i] === 0xA0 && (i === 0 || iniContentBuffer[i - 1] !== 0xC2)) {
             // 将单独的 A0 替换为 C2 A0
-            resultBuffer = Buffer.concat([resultBuffer, Buffer.from([0xC2, 0xA0])]);
+            resultBuffer[offset++] = 0xC2;
+            resultBuffer[offset++] = 0xA0;
         } else {
-            // 否则，保留原字节
-            resultBuffer = Buffer.concat([resultBuffer, Buffer.from([iniContentBuffer[i]])]);
+            // 否则，直接复制字节
+            resultBuffer[offset++] = iniContentBuffer[i];
         }
     }
 
