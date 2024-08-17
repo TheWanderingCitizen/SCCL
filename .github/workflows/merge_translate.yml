@@ -23,3 +23,9 @@ jobs:
       run: node merge_and_convert.js
       env:
         AUTHORIZATION: ${{ secrets.AUTHORIZATION }}
+
+    - name: Upload INI files
+      uses: actions/upload-artifact@v3
+      with:
+        name: ini-files
+        path: final_output_*.ini
