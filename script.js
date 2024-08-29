@@ -91,23 +91,25 @@ function mergeJsonData(allData) {
     const mergedData = {};
     let mergeOrder = 0;
 
-    // 确保数据按创建时间从最新到最旧排序（已经在 fetchFileData 中按时间排序，所以这里无需再次排序）
+    // 确保数据按创建时间从最新到最旧排序
     allData.reverse().forEach(dataList => {
         mergeOrder++;
-        console.log(`Merge Order ${mergeOrder}: Processing file with ${dataList.length} items.`);
+        const currentFileName = dataList.fileName || `Unknown file ${mergeOrder}`;
 
         dataList.forEach(item => {
             if (!mergedData[item.key]) {
                 mergedData[item.key] = item;
-                console.log(`  - Key "${item.key}" added from Merge Order ${mergeOrder}`);
             } else {
-                console.log(`  - Key "${item.key}" skipped (already exists, added in earlier Merge Order)`);
+                // 输出替换的文件名顺序
+                console.log(`Merge Order ${mergeOrder}: Key "${item.key}" replaced by data from ${currentFileName}`);
+                mergedData[item.key] = item; // 替换为当前数据
             }
         });
     });
 
     return Object.values(mergedData);
 }
+
 
 // 合并 JSON 数据，优先保留后面的数据（越晚创建的优先保留）
 function mergeJsonData(allData) {
