@@ -46,9 +46,11 @@ async function fetchAndMergeTranslations() {
             ruleFiles.push(file.name);  // 保存规则文件名
         } else {
             console.log(`Merging data from file: ${file.name}`);
-            // 非 "汉化规则" 文件，正常合并
+            // 非 "汉化规则" 文件，按 id 优先保留
             fileData.forEach(item => {
-                mergedData[item.key] = item.translation;
+                if (!mergedData[item.key] || item.id > mergedData[item.key].id) {
+                    mergedData[item.key] = { translation: item.translation, id: item.id };
+                }
             });
         }
     }
@@ -69,7 +71,7 @@ function convertJsonToIni(jsonData, translationRules) {
     let iniContent = '\uFEFF'; // 添加 BOM (EF BB BF)
 
     Object.keys(jsonData).forEach(key => {
-        let value = jsonData[key];
+        let value = jsonData[key].translation;
         if (translationRules[key]) {
             // 如果存在汉化规则，应用规则进行替换
             value = translationRules[key];
