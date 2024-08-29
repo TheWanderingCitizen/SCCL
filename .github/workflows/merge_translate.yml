@@ -1,4 +1,4 @@
-name: 发行汉化版本
+name: 发行汉化版本 (weblate)
 
 on:
   workflow_dispatch: # 允许手动触发
