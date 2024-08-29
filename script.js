@@ -90,9 +90,13 @@ async function fetchTranslationData(fileId) {
 function mergeJsonData(allData) {
     const mergedData = {};
 
-    allData.forEach(dataList => {
+    // 确保数据按创建时间从最新到最旧排序（已经在 fetchFileData 中按时间排序，所以这里无需再次排序）
+    allData.reverse().forEach(dataList => {
         dataList.forEach(item => {
-            mergedData[item.key] = item;
+            // 只保留最新的数据，如果键已存在，则不更新
+            if (!mergedData[item.key]) {
+                mergedData[item.key] = item;
+            }
         });
     });
 
