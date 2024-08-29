@@ -50,6 +50,9 @@ async function fetchAndMergeTranslations() {
             fileData.forEach(item => {
                 if (!mergedData[item.key] || item.id > mergedData[item.key].id) {
                     mergedData[item.key] = { translation: item.translation, id: item.id };
+                } else if (!mergedData[item.key]) {
+                    // 处理新增的 key-value 对
+                    mergedData[item.key] = { translation: item.translation, id: item.id };
                 }
             });
         }
