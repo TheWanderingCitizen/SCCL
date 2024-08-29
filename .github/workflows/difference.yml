@@ -1,9 +1,9 @@
-name: 对比ini差异
+name: 对比ini差异 (weblate)
 
 on:
   push:
     branches:
-      - main
+      - weblate
 
 jobs:
   convert-compare-json:
