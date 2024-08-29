@@ -109,26 +109,25 @@ function mergeJsonData(allData) {
     return Object.values(mergedData);
 }
 
-// 保存 global.json 中与 final.json 有差异的内容到 difference.json，忽略前后空格
-function saveDifferences() {
-    // 读取并解析 JSON 文件，移除 BOM
-    const globalJson = JSON.parse(fs.readFileSync('global.json', 'utf-8'));
-    const finalJson = JSON.parse(fs.readFileSync('final.json', 'utf-8'));
+// 合并 JSON 数据，优先保留后面的数据（越晚创建的优先保留）
+function mergeJsonData(allData) {
+    const mergedData = {};
+    let mergeOrder = 0;
 
-    const differences = globalJson.filter(gItem => {
-        const fItem = finalJson.find(f => f.key === gItem.key);
-        
-        if (!fItem) {
-            // 如果 final.json 中不存在对应的 key，则视为差异
-            return true;
-        }
+    // 确保数据按创建时间从最新到最旧排序（已经在 fetchFileData 中按时间排序，所以这里无需再次排序）
+    allData.reverse().forEach(dataList => {
+        mergeOrder++;
 
-        // 比较时移除空白符并处理换行符
-        return gItem.original.trim().replace(/\s+/g, ' ') !== fItem.original.trim().replace(/\s+/g, ' ');
+        dataList.forEach(item => {
+            if (!mergedData[item.key]) {
+                mergedData[item.key] = item;
+            } else {
+                console.log(`Merge Order ${mergeOrder}: Key "${item.key}" was not modified (already exists).`);
+            }
+        });
     });
 
-    fs.writeFileSync('difference.json', JSON.stringify(differences, null, 2));
-    console.log('global.json 中的差异已保存到 difference.json');
+    return Object.values(mergedData);
 }
 
 
