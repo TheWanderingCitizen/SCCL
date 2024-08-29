@@ -74,8 +74,12 @@ async function fetchFileData() {
     // 过滤掉 "folder" 为 "汉化规则" 的文件
     const filteredFiles = files.filter(file => file.folder !== "汉化规则");
 
-    // 按顺序获取所有文件的翻译数据
-    const allData = await Promise.all(filteredFiles.map(file => fetchTranslationData(file.id)));
+    // 按顺序获取所有文件的翻译数据，并附加文件名
+    const allData = await Promise.all(filteredFiles.map(async file => {
+        const data = await fetchTranslationData(file.id);
+        return data.map(item => ({ ...item, fileName: file.name, id: file.id })); // 附加文件名和 ID
+    }));
+
     return allData;
 }
 
@@ -86,7 +90,7 @@ async function fetchTranslationData(fileId) {
     return response.data;
 }
 
-// 合并 JSON 数据，优先保留后面的数据（越晚创建的优先保留）
+// 合并 JSON 数据，优先保留 id 越大的数据
 function mergeJsonData(allData) {
     const mergedData = {};
     let mergeOrder = 0;
@@ -97,17 +101,24 @@ function mergeJsonData(allData) {
         const currentFileName = dataList.fileName || `Unknown file ${mergeOrder}`;
 
         dataList.forEach(item => {
-            if (mergedData[item.key]) {
-                // 输出替换的文件名顺序
-                console.log(`Merge Order ${mergeOrder}: Key "${item.key}" replaced by data from ${currentFileName}`);
+            const currentItem = mergedData[item.key];
+            if (currentItem) {
+                if (item.id > currentItem.id) {
+                    // 如果当前项的 id 大于已存在项的 id，则替换并输出替换的文件名顺序
+                    console.log(`Merge Order ${mergeOrder}: Key "${item.key}" replaced by data from ${currentFileName} (ID ${item.id} > ${currentItem.id})`);
+                    mergedData[item.key] = item;
+                } else {
+                    // 输出跳过的替换信息
+                    console.log(`Merge Order ${mergeOrder}: Key "${item.key}" from ${currentFileName} skipped (ID ${item.id} <= ${currentItem.id})`);
+                }
+            } else {
+                mergedData[item.key] = item;
             }
-            mergedData[item.key] = item; // 替换为当前数据
         });
     });
 
     return Object.values(mergedData);
 }
-
 
 // 保存 global.json 中与 final.json 有差异的内容到 difference.json，忽略前后空格
 function saveDifferences() {
