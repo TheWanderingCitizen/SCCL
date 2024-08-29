@@ -86,16 +86,22 @@ async function fetchTranslationData(fileId) {
     return response.data;
 }
 
-// 合并 JSON 数据，优先保留后面的数据
+// 合并 JSON 数据，优先保留后面的数据（越晚创建的优先保留）
 function mergeJsonData(allData) {
     const mergedData = {};
+    let mergeOrder = 0;
 
     // 确保数据按创建时间从最新到最旧排序（已经在 fetchFileData 中按时间排序，所以这里无需再次排序）
     allData.reverse().forEach(dataList => {
+        mergeOrder++;
+        console.log(`Merge Order ${mergeOrder}: Processing file with ${dataList.length} items.`);
+
         dataList.forEach(item => {
-            // 只保留最新的数据，如果键已存在，则不更新
             if (!mergedData[item.key]) {
                 mergedData[item.key] = item;
+                console.log(`  - Key "${item.key}" added from Merge Order ${mergeOrder}`);
+            } else {
+                console.log(`  - Key "${item.key}" skipped (already exists, added in earlier Merge Order)`);
             }
         });
     });
