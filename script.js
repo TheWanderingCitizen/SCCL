@@ -49,10 +49,7 @@ function convertIniToJson() {
             const [key, ...valueParts] = line.split('=');
             const original = valueParts.join('=').trim(); // 处理可能包含等号的值
             jsonArray.push({
-                key: key.trim(),
-                original: original,
-                translation: '',
-                context: ''
+                [key.trim()]: original,
             });
         }
     });
