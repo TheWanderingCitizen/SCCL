@@ -107,13 +107,20 @@ function saveDifferences() {
 
     const differences = globalJson.filter(gItem => {
         const fItem = finalJson.find(f => f.key === gItem.key);
+        
+        if (!fItem) {
+            // 如果 final.json 中不存在对应的 key，则视为差异
+            return true;
+        }
+
         // 比较时移除空白符并处理换行符
-        return fItem && gItem.original.trim().replace(/\s+/g, ' ') !== fItem.original.trim().replace(/\s+/g, ' ');
+        return gItem.original.trim().replace(/\s+/g, ' ') !== fItem.original.trim().replace(/\s+/g, ' ');
     });
 
     fs.writeFileSync('difference.json', JSON.stringify(differences, null, 2));
     console.log('global.json 中的差异已保存到 difference.json');
 }
+
 
 // 主函数
 async function main() {
