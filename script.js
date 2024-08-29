@@ -130,6 +130,27 @@ function mergeJsonData(allData) {
     return Object.values(mergedData);
 }
 
+// 保存 global.json 中与 final.json 有差异的内容到 difference.json，忽略前后空格
+function saveDifferences() {
+    // 读取并解析 JSON 文件，移除 BOM
+    const globalJson = JSON.parse(fs.readFileSync('global.json', 'utf-8'));
+    const finalJson = JSON.parse(fs.readFileSync('final.json', 'utf-8'));
+
+    const differences = globalJson.filter(gItem => {
+        const fItem = finalJson.find(f => f.key === gItem.key);
+        
+        if (!fItem) {
+            // 如果 final.json 中不存在对应的 key，则视为差异
+            return true;
+        }
+
+        // 比较时移除空白符并处理换行符
+        return gItem.original.trim().replace(/\s+/g, ' ') !== fItem.original.trim().replace(/\s+/g, ' ');
+    });
+
+    fs.writeFileSync('difference.json', JSON.stringify(differences, null, 2));
+    console.log('global.json 中的差异已保存到 difference.json');
+}
 
 // 主函数
 async function main() {
