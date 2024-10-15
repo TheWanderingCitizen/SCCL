@@ -73,7 +73,10 @@ async function fetchTranslationData(fileId) {
 function convertJsonToIni(jsonData, translationRules) {
     let iniContent = '\uFEFF'; // 添加 BOM (EF BB BF)
 
-    Object.keys(jsonData).forEach(key => {
+    // 获取键并按字母顺序排序
+    const sortedKeys = Object.keys(jsonData).sort();
+
+    sortedKeys.forEach(key => {
         let value = jsonData[key].translation;
         if (translationRules[key]) {
             // 如果存在汉化规则，应用规则进行替换
