@@ -30,28 +30,24 @@ async function fetchAndMergeTranslations() {
 
         if (file.name === "汉化规则/3d替换.json") {
             console.log("Found 3d替换.json, processing...");
-            // 如果文件名为 "汉化规则/3d替换.json"，则提取其内容
             replace3dData = {};
             fileData.forEach(item => {
                 replace3dData[item.key] = item.translation;
             });
         } else if (file.folder === "汉化规则" && file.name !== "汉化规则/3d替换.json") {
             console.log(`Found 汉化规则 file: ${file.name}, processing...`);
-            // 处理其他 "汉化规则" 文件，将其保存到 translationRules 中
             const rule = {};
             fileData.forEach(item => {
                 rule[item.key] = item.translation;
             });
-            translationRules[file.name] = rule;  // 以文件名为 key 保存规则
-            ruleFiles.push(file.name);  // 保存规则文件名
+            translationRules[file.name] = rule;
+            ruleFiles.push(file.name); 
         } else {
             console.log(`Merging data from file: ${file.name}`);
-            // 非 "汉化规则" 文件，按 id 优先保留
             fileData.forEach(item => {
                 if (!mergedData[item.key] || item.id > mergedData[item.key].id) {
                     mergedData[item.key] = { translation: item.translation, id: item.id };
                 } else if (!mergedData[item.key]) {
-                    // 处理新增的 key-value 对
                     mergedData[item.key] = { translation: item.translation, id: item.id };
                 }
             });
@@ -79,7 +75,6 @@ function convertJsonToIni(jsonData, translationRules) {
     sortedKeys.forEach(key => {
         let value = jsonData[key].translation;
         if (translationRules[key]) {
-            // 如果存在汉化规则，应用规则进行替换
             value = translationRules[key];
         }
         iniContent += `${key}=${value}\n`;
@@ -102,39 +97,38 @@ async function main() {
     try {
         const { mergedData, translationRules, ruleFiles, replace3dData } = await fetchAndMergeTranslations();
 
-        // 确保已获取到 "汉化规则/3d替换.json" 的数据
         if (!replace3dData) {
             throw new Error("汉化规则/3d替换.json 未找到");
         }
 
-        // 确保输出目录存在
         const outputDir = 'final_output';
         ensureDirectoryExistence(outputDir);
 
-        // 为每个汉化规则生成一个对应的 INI 文件
         for (const ruleFileName of ruleFiles) {
             console.log(`Generating INI file for rule: ${ruleFileName}`);
             const rules = translationRules[ruleFileName];
 
-            // 将拼合后的 JSON 应用 "汉化规则/3d替换.json" 和当前的汉化规则生成 INI
+            // Combine 3D replace data with other rules
             const combinedRules = { ...replace3dData, ...rules };
             const iniContent = convertJsonToIni(mergedData, combinedRules);
 
-            // 构造输出文件路径
-            const outputFileName = path.join(outputDir, `final_output_${ruleFileName.replace('汉化规则/', '').replace('.json', '')}.ini`);
+            // Create a directory for each rule file
+            const ruleDir = path.join(outputDir, ruleFileName.replace('汉化规则/', '').replace('.json', ''));
+            ensureDirectoryExistence(ruleDir);
+
+            // Save INI file in the corresponding directory
+            const outputFileName = path.join(ruleDir, 'global.ini');
             ensureDirectoryExistence(outputFileName);
 
-            // 将转换后的 INI 内容保存到文件
             fs.writeFileSync(outputFileName, iniContent, { encoding: 'utf-8' });
             console.log(`拼合后的翻译内容已转换为 INI 格式并保存到 ${outputFileName}`);
         }
 
-        // 生成只应用 "3d替换.json" 的 final.ini 文件
-        console.log("Generating final.ini with only 3d替换.json applied.");
+        console.log("Generating global.ini with only 3d替换.json applied.");
         const finalIniContent = convertJsonToIni(mergedData, replace3dData);
-        const finalOutputFileName = path.join(outputDir, 'final.ini');
+        const finalOutputFileName = path.join(outputDir, 'global.ini');
         fs.writeFileSync(finalOutputFileName, finalIniContent, { encoding: 'utf-8' });
-        console.log(`Generated final.ini and saved to ${finalOutputFileName}`);
+        console.log(`Generated global.ini and saved to ${finalOutputFileName}`);
 
     } catch (error) {
         console.error('发生错误:', error);
