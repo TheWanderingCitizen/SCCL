@@ -117,13 +117,12 @@ async function main() {
             ensureDirectoryExistence(ruleDir);
 
             // Save INI file in the corresponding directory
-            const outputFileName = path.join(ruleDir, 'global.ini');
-            ensureDirectoryExistence(outputFileName);
-
+            const outputFileName = path.join(ruleDir, 'global.ini'); // 每个文件夹内生成 global.ini 文件
             fs.writeFileSync(outputFileName, iniContent, { encoding: 'utf-8' });
             console.log(`拼合后的翻译内容已转换为 INI 格式并保存到 ${outputFileName}`);
         }
 
+        // 生成一个只应用 "3d替换.json" 的 global.ini 文件
         console.log("Generating global.ini with only 3d替换.json applied.");
         const finalIniContent = convertJsonToIni(mergedData, replace3dData);
         const finalOutputFileName = path.join(outputDir, 'global.ini');
