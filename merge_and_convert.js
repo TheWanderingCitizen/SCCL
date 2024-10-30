@@ -102,33 +102,23 @@ async function main() {
         }
 
         const outputDir = 'final_output';
+        
+        // Ensure output directory exists
         ensureDirectoryExistence(outputDir);
-
-        // 为每个汉化规则生成一个对应的 INI 文件
+        
+        // For each rule file, ensure its directory exists
         for (const ruleFileName of ruleFiles) {
-            console.log(`Generating INI file for rule: ${ruleFileName}`);
-            const rules = translationRules[ruleFileName];
-
-            // Combine 3D replace data with other rules
-            const combinedRules = { ...replace3dData, ...rules };
-            const iniContent = convertJsonToIni(mergedData, combinedRules);
-
-            // Create a directory for each rule file
             const ruleDir = path.join(outputDir, ruleFileName.replace('汉化规则/', '').replace('.json', ''));
-            ensureDirectoryExistence(ruleDir); // 确保目录存在
-
-            // Save INI file in the corresponding directory
+            ensureDirectoryExistence(ruleDir);
+        
             const outputFileName = path.join(ruleDir, 'global.ini');
-            ensureDirectoryExistence(outputFileName); // 确保文件的目录存在
-
             fs.writeFileSync(outputFileName, iniContent, { encoding: 'utf-8' });
             console.log(`拼合后的翻译内容已转换为 INI 格式并保存到 ${outputFileName}`);
         }
-
-        // 生成一个只应用 "3d替换.json" 的 global.ini 文件
-        console.log("Generating global.ini with only 3d替换.json applied.");
-        const finalIniContent = convertJsonToIni(mergedData, replace3dData);
+        
+        // Ensure the directory exists for the final global.ini file
         const finalOutputFileName = path.join(outputDir, 'global.ini');
+        ensureDirectoryExistence(path.dirname(finalOutputFileName));
         fs.writeFileSync(finalOutputFileName, finalIniContent, { encoding: 'utf-8' });
         console.log(`Generated global.ini and saved to ${finalOutputFileName}`);
 
