@@ -2,15 +2,14 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-// API configuration
+// API 配置
 const authHeader = {
     headers: {
         'Authorization': process.env.AUTHORIZATION
     }
 };
 
-// Fetch all files from Paratranz and merge into one JSON object,
-// also process "3d替换.json" in "汉化规则" folder
+// 从 Paratranz 获取所有文件并拼合为一个 JSON 对象，同时处理 "汉化规则" 文件和 "汉化规则/3d替换.json"
 async function fetchAndMergeTranslations() {
     console.log("Fetching files from Paratranz...");
     const response = await axios.get('https://paratranz.cn/api/projects/8340/files', authHeader);
@@ -18,34 +17,41 @@ async function fetchAndMergeTranslations() {
 
     console.log(`Fetched ${files.length} files.`);
 
-    // Merged data and translation rules
+    // 拼合后的数据和汉化规则
     const mergedData = {};
     const translationRules = {};
     const ruleFiles = [];
-    let replace3dData = {};  // Initialize to empty object
+    let replace3dData = null;  // 用于存储 "汉化规则/3d替换.json" 的内容
 
-    // Process files
+    // 遍历文件，按需要进行处理
     for (const file of files) {
-        console.log(`Processing file: ${file.name} in folder: ${file.folder}`);
+        console.log(`Processing file: ${file.name}`);
         const fileData = await fetchTranslationData(file.id);
 
-        if (file.folder === "汉化规则" && file.name === "3d替换.json") {
+        if (file.name === "汉化规则/3d替换.json") {
             console.log("Found 3d替换.json, processing...");
+            // 如果文件名为 "汉化规则/3d替换.json"，则提取其内容
+            replace3dData = {};
             fileData.forEach(item => {
                 replace3dData[item.key] = item.translation;
             });
-        } else if (file.folder === "汉化规则" && file.name !== "3d替换.json") {
+        } else if (file.folder === "汉化规则" && file.name !== "汉化规则/3d替换.json") {
             console.log(`Found 汉化规则 file: ${file.name}, processing...`);
+            // 处理其他 "汉化规则" 文件，将其保存到 translationRules 中
             const rule = {};
             fileData.forEach(item => {
                 rule[item.key] = item.translation;
             });
-            translationRules[file.name] = rule;
-            ruleFiles.push(file.name);
+            translationRules[file.name] = rule;  // 以文件名为 key 保存规则
+            ruleFiles.push(file.name);  // 保存规则文件名
         } else {
             console.log(`Merging data from file: ${file.name}`);
+            // 非 "汉化规则" 文件，按 id 优先保留
             fileData.forEach(item => {
                 if (!mergedData[item.key] || item.id > mergedData[item.key].id) {
+                    mergedData[item.key] = { translation: item.translation, id: item.id };
+                } else if (!mergedData[item.key]) {
+                    // 处理新增的 key-value 对
                     mergedData[item.key] = { translation: item.translation, id: item.id };
                 }
             });
@@ -55,29 +61,25 @@ async function fetchAndMergeTranslations() {
     return { mergedData, translationRules, ruleFiles, replace3dData };
 }
 
-// Fetch translation data by file ID
+// 根据文件 ID 获取翻译数据
 async function fetchTranslationData(fileId) {
-    try {
-        const url = `https://paratranz.cn/api/projects/8340/files/${fileId}/translation`;
-        console.log(`Fetching translation data for file ID: ${fileId}`);
-        const response = await axios.get(url, authHeader);
-        return response.data;
-    } catch (error) {
-        console.error(`Failed to fetch translation data for file ID: ${fileId}`, error);
-        throw error;
-    }
+    const url = `https://paratranz.cn/api/projects/8340/files/${fileId}/translation`;
+    console.log(`Fetching translation data for file ID: ${fileId}`);
+    const response = await axios.get(url, authHeader);
+    return response.data;
 }
 
-// Convert merged JSON and rules to INI format, add BOM at the beginning
+// 将拼合后的 JSON 和规则应用到 INI 格式，并在开头添加 BOM（EF BB BF）
 function convertJsonToIni(jsonData, translationRules) {
-    let iniContent = '\uFEFF'; // Add BOM (EF BB BF)
+    let iniContent = '\uFEFF'; // 添加 BOM (EF BB BF)
 
-    // Get keys and sort alphabetically
+    // 获取键并按字母顺序排序
     const sortedKeys = Object.keys(jsonData).sort();
 
     sortedKeys.forEach(key => {
         let value = jsonData[key].translation;
-        if (translationRules && translationRules[key]) {
+        if (translationRules[key]) {
+            // 如果存在汉化规则，应用规则进行替换
             value = translationRules[key];
         }
         iniContent += `${key}=${value}\n`;
@@ -86,57 +88,56 @@ function convertJsonToIni(jsonData, translationRules) {
     return iniContent;
 }
 
-// Ensure directory exists
-function ensureDirectoryExistence(targetPath) {
-    const dirPath = path.extname(targetPath) ? path.dirname(targetPath) : targetPath;
-    if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true });
-        console.log(`Created directory: ${dirPath}`);
+// 确保目录存在
+function ensureDirectoryExistence(filePath) {
+    const dirname = path.dirname(filePath);
+    if (!fs.existsSync(dirname)) {
+        fs.mkdirSync(dirname, { recursive: true });
+        console.log(`Created directory: ${dirname}`);
     }
 }
 
-// Main function
+// 主函数
 async function main() {
     try {
         const { mergedData, translationRules, ruleFiles, replace3dData } = await fetchAndMergeTranslations();
 
+        // 确保已获取到 "汉化规则/3d替换.json" 的数据
+        if (!replace3dData) {
+            throw new Error("汉化规则/3d替换.json 未找到");
+        }
+
+        // 确保输出目录存在
         const outputDir = 'final_output';
         ensureDirectoryExistence(outputDir);
 
-        // Generate an INI file for each translation rule
+        // 为每个汉化规则生成一个对应的 INI 文件
         for (const ruleFileName of ruleFiles) {
             console.log(`Generating INI file for rule: ${ruleFileName}`);
             const rules = translationRules[ruleFileName];
 
-            // Combine 3D replace data with other rules if replace3dData exists
+            // 将拼合后的 JSON 应用 "汉化规则/3d替换.json" 和当前的汉化规则生成 INI
             const combinedRules = { ...replace3dData, ...rules };
             const iniContent = convertJsonToIni(mergedData, combinedRules);
 
-            // Save INI file directly in the output directory with a unique name
-            const iniFileName = ruleFileName.replace('.json', '.ini');
-            const outputFileName = path.join(outputDir, iniFileName);
+            // 构造输出文件路径
+            const outputFileName = path.join(outputDir, `final_output_${ruleFileName.replace('汉化规则/', '').replace('.json', '')}.ini`);
+            ensureDirectoryExistence(outputFileName);
+
+            // 将转换后的 INI 内容保存到文件
             fs.writeFileSync(outputFileName, iniContent, { encoding: 'utf-8' });
-            console.log(`Merged translation content has been converted to INI format and saved to ${outputFileName}`);
+            console.log(`拼合后的翻译内容已转换为 INI 格式并保存到 ${outputFileName}`);
         }
 
-        // Generate an INI file applying only "3d替换.json" if it exists
-        if (Object.keys(replace3dData).length > 0) {
-            console.log("Generating 3d替换.ini with only 3d替换.json applied.");
-            const finalIniContent = convertJsonToIni(mergedData, replace3dData);
-            const finalOutputFileName = path.join(outputDir, '3d替换.ini');
-            fs.writeFileSync(finalOutputFileName, finalIniContent, { encoding: 'utf-8' });
-            console.log(`Generated 3d替换.ini and saved to ${finalOutputFileName}`);
-        }
-
-        // Generate an INI file applying no rules (base translation)
-        console.log("Generating base.ini with no rules applied.");
-        const baseIniContent = convertJsonToIni(mergedData, {});
-        const baseOutputFileName = path.join(outputDir, 'base.ini');
-        fs.writeFileSync(baseOutputFileName, baseIniContent, { encoding: 'utf-8' });
-        console.log(`Generated base.ini and saved to ${baseOutputFileName}`);
+        // 生成只应用 "3d替换.json" 的 final.ini 文件
+        console.log("Generating final.ini with only 3d替换.json applied.");
+        const finalIniContent = convertJsonToIni(mergedData, replace3dData);
+        const finalOutputFileName = path.join(outputDir, 'final.ini');
+        fs.writeFileSync(finalOutputFileName, finalIniContent, { encoding: 'utf-8' });
+        console.log(`Generated final.ini and saved to ${finalOutputFileName}`);
 
     } catch (error) {
-        console.error('An error occurred:', error);
+        console.error('发生错误:', error);
     }
 }
 
