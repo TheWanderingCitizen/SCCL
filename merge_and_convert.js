@@ -70,7 +70,7 @@ async function fetchTranslationData(fileId) {
 }
 
 // 将拼合后的 JSON 和规则应用到 INI 格式，并在开头添加 BOM（EF BB BF）
-function convertJsonToIni(jsonData, translationRules) {
+function convertJsonToIni(jsonData, translationRules = {}) {
     let iniContent = '\uFEFF'; // 添加 BOM (EF BB BF)
 
     // 获取键并按字母顺序排序
@@ -131,7 +131,7 @@ async function main() {
 
         // 生成只应用 "3d替换.json" 的 final.ini 文件
         console.log("Generating final.ini with only 3d替换.json applied.");
-        const finalIniContent = convertJsonToIni(mergedData, replace3dData);
+        const finalIniContent = convertJsonToIni(mergedData, replace3dData || {});
         const finalOutputFileName = path.join(outputDir, 'final.ini');
         fs.writeFileSync(finalOutputFileName, finalIniContent, { encoding: 'utf-8' });
         console.log(`Generated final.ini and saved to ${finalOutputFileName}`);
