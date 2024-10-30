@@ -23,18 +23,18 @@ async function fetchAndMergeTranslations() {
     const ruleFiles = [];
     let replace3dData = null;  // 用于存储 "汉化规则/3d替换.json" 的内容
 
-    // 遍历文件，按需要进行处理
+    // In your fetchAndMergeTranslations function
     for (const file of files) {
-        console.log(`Processing file: ${file.name}`);
+        console.log(`Processing file: ${file.name} in folder: ${file.folder}`);
         const fileData = await fetchTranslationData(file.id);
-
-        if (file.name === "汉化规则/3d替换.json") {
+    
+        if (file.folder === "汉化规则" && file.name === "3d替换.json") {
             console.log("Found 3d替换.json, processing...");
             replace3dData = {};
             fileData.forEach(item => {
                 replace3dData[item.key] = item.translation;
             });
-        } else if (file.folder === "汉化规则" && file.name !== "汉化规则/3d替换.json") {
+        } else if (file.folder === "汉化规则" && file.name !== "3d替换.json") {
             console.log(`Found 汉化规则 file: ${file.name}, processing...`);
             const rule = {};
             fileData.forEach(item => {
@@ -47,12 +47,11 @@ async function fetchAndMergeTranslations() {
             fileData.forEach(item => {
                 if (!mergedData[item.key] || item.id > mergedData[item.key].id) {
                     mergedData[item.key] = { translation: item.translation, id: item.id };
-                } else if (!mergedData[item.key]) {
-                    mergedData[item.key] = { translation: item.translation, id: item.id };
                 }
             });
         }
     }
+
 
     return { mergedData, translationRules, ruleFiles, replace3dData };
 }
