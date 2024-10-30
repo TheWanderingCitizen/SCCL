@@ -22,7 +22,7 @@ async function fetchAndMergeTranslations() {
     const mergedData = {};
     const translationRules = {};
     const ruleFiles = [];
-    let replace3dData = null;  // To store content of "3d替换.json"
+    let replace3dData = {};  // Initialize to empty object
 
     // Process files
     for (const file of files) {
@@ -31,7 +31,6 @@ async function fetchAndMergeTranslations() {
 
         if (file.folder === "汉化规则" && file.name === "3d替换.json") {
             console.log("Found 3d替换.json, processing...");
-            replace3dData = {};
             fileData.forEach(item => {
                 replace3dData[item.key] = item.translation;
             });
@@ -101,16 +100,6 @@ async function main() {
     try {
         const { mergedData, translationRules, ruleFiles, replace3dData } = await fetchAndMergeTranslations();
 
-        if (!replace3dData) {
-            console.error("Error: '3d替换.json' not found in '汉化规则' folder.");
-            console.log("Available files:");
-            // Fetch the list of files again for logging
-            const response = await axios.get('https://paratranz.cn/api/projects/8340/files', authHeader);
-            const files = response.data;
-            files.forEach(f => console.log(`- ${f.folder}/${f.name}`));
-            throw new Error("'3d替换.json' is required for the script to run.");
-        }
-
         const outputDir = 'final_output';
         ensureDirectoryExistence(outputDir);
 
@@ -119,28 +108,32 @@ async function main() {
             console.log(`Generating INI file for rule: ${ruleFileName}`);
             const rules = translationRules[ruleFileName];
 
-            // Combine 3D replace data with other rules
+            // Combine 3D replace data with other rules if replace3dData exists
             const combinedRules = { ...replace3dData, ...rules };
             const iniContent = convertJsonToIni(mergedData, combinedRules);
 
-            // Create a directory for each rule file
-            const ruleDirName = ruleFileName.replace('.json', '');
-            const ruleDir = path.join(outputDir, ruleDirName);
-            ensureDirectoryExistence(ruleDir); // Ensure directory exists
-
-            // Save INI file in the corresponding directory
-            const outputFileName = path.join(ruleDir, 'global.ini');
+            // Save INI file directly in the output directory with a unique name
+            const iniFileName = ruleFileName.replace('.json', '.ini');
+            const outputFileName = path.join(outputDir, iniFileName);
             fs.writeFileSync(outputFileName, iniContent, { encoding: 'utf-8' });
             console.log(`Merged translation content has been converted to INI format and saved to ${outputFileName}`);
         }
 
-        // Generate a global.ini file applying only "3d替换.json"
-        console.log("Generating global.ini with only 3d替换.json applied.");
-        const finalIniContent = convertJsonToIni(mergedData, replace3dData);
-        const finalOutputFileName = path.join(outputDir, 'global.ini');
-        ensureDirectoryExistence(path.dirname(finalOutputFileName));
-        fs.writeFileSync(finalOutputFileName, finalIniContent, { encoding: 'utf-8' });
-        console.log(`Generated global.ini and saved to ${finalOutputFileName}`);
+        // Generate an INI file applying only "3d替换.json" if it exists
+        if (Object.keys(replace3dData).length > 0) {
+            console.log("Generating 3d替换.ini with only 3d替换.json applied.");
+            const finalIniContent = convertJsonToIni(mergedData, replace3dData);
+            const finalOutputFileName = path.join(outputDir, '3d替换.ini');
+            fs.writeFileSync(finalOutputFileName, finalIniContent, { encoding: 'utf-8' });
+            console.log(`Generated 3d替换.ini and saved to ${finalOutputFileName}`);
+        }
+
+        // Generate an INI file applying no rules (base translation)
+        console.log("Generating base.ini with no rules applied.");
+        const baseIniContent = convertJsonToIni(mergedData, {});
+        const baseOutputFileName = path.join(outputDir, 'base.ini');
+        fs.writeFileSync(baseOutputFileName, baseIniContent, { encoding: 'utf-8' });
+        console.log(`Generated base.ini and saved to ${baseOutputFileName}`);
 
     } catch (error) {
         console.error('An error occurred:', error);
