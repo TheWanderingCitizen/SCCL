@@ -12,7 +12,10 @@ import cn.citizenwiki.utils.ParatranzFileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
@@ -40,14 +43,14 @@ public class MergeAndConvert {
         processorExecutor = buildProcessorExecutor();
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         new MergeAndConvert().fetchAndMergeTranslations();
     }
 
     /**
      * 合并 Paratranz 上的所有汉化文件,并调用translationProcessors进行处理
      */
-    public void fetchAndMergeTranslations() {
+    public void fetchAndMergeTranslations() throws IOException {
         logger.info("从 Paratranz 拉取数据...");
         //拉取所有汉化文件
         List<PZFile> pzFiles = paratranzApi.projectFiles();
@@ -62,20 +65,21 @@ public class MergeAndConvert {
                 .max(Comparator.naturalOrder())
                 .get();
         logger.info("最新版本号为：{}", lastFileVersion.getName());
-        //读取原始global.ini文件,顺序与文件中一致
-        logger.info("从fork仓库[{}]分支拉取global.ini数据，此数据将作为基准数据", GithubConfig.EN_BRANCH_NAME);
-        //从fork仓库en分支下载global.ini
-        InputStream inputStream =
-                GithubApi.INSTANCE.downloadContent(GithubConfig.INSTANCE.getForkOwner(),
-                        GithubConfig.INSTANCE.getForkRepo(), GithubConfig.EN_BRANCH_NAME, GithubConfig.EN_GLOBAL_INI_PATH);
+//        logger.info("从fork仓库[{}]分支拉取global.ini数据，此数据将作为基准数据", GithubConfig.EN_BRANCH_NAME);
+//        //从fork仓库en分支下载global.ini
+//        InputStream inputStream =
+//                GithubApi.INSTANCE.downloadContent(GithubConfig.INSTANCE.getForkOwner(),
+//                        GithubConfig.INSTANCE.getForkRepo(), GithubConfig.EN_BRANCH_NAME, GithubConfig.EN_GLOBAL_INI_PATH);
+        //从本地读取global.ini
+        logger.info("正在读取global.ini数据，此数据将作为基准数据...");
+        InputStream inputStream = Files.newInputStream(Paths.get("global.ini"));
         //转换global.ini
         LinkedHashMap<String, String> globalIniMap = GlobalIniUtil.convertIniToMap(inputStream);
         if (globalIniMap.isEmpty()) {
             return;
         }
         logger.info("读取到{}行数据", globalIniMap.size());
-        Map<String, PZTranslation> mergedTranslateMap =
-                Collections.unmodifiableMap(mergeTranslateData(globalIniMap, pzFiles));
+        Map<String, PZTranslation> mergedTranslateMap = Collections.unmodifiableMap(mergeTranslateData(globalIniMap, pzFiles));
         if (mergedTranslateMap.isEmpty()) {
             return;
         }
@@ -108,7 +112,6 @@ public class MergeAndConvert {
      */
     private Map<String, PZTranslation> mergeTranslateData(LinkedHashMap<String, String> globalIniMap, List<PZFile> pzFiles) {
         logger.info("开始拉取并合并paratranz汉化文件");
-        SequencedSet<String> globalIniSequencedKeySet = globalIniMap.sequencedKeySet();
         Map<String, PZTranslation> mergedTranslateMap = new TreeMap<>();
         for (PZFile pzFile : pzFiles) {
             if (pzFile.getFolder().equals("汉化规则")) {
@@ -116,10 +119,16 @@ public class MergeAndConvert {
                 continue;
             }
             logger.info("正在拉取[{}]并合并...",pzFile.getName());
-            List<PZTranslation> pzTranslations = paratranzApi.fileTranslation(pzFile.getId());
-            for (PZTranslation pzTranslation : pzTranslations) {
+            Map<String, PZTranslation> pzMap = paratranzApi.fileTranslation(pzFile.getId())
+                    .stream()
+                    .collect(Collectors.toMap(PZTranslation::getKey, pzTranslation -> pzTranslation));
+            //遍历源global.ini，使用paranz上的翻译
+            for (Map.Entry<String, String> entry : globalIniMap.entrySet()) {
+                //英文原文
+                String enValue = entry.getValue();
                 // 只处理 global.ini 中存在的 key,这样能够过滤掉已经被删除的key
-                if (globalIniSequencedKeySet.contains(pzTranslation.getKey())) {
+                PZTranslation pzTranslation = pzMap.get(entry.getKey());
+                if (Objects.nonNull(pzTranslation)) {
                     //相同key保留id大的
                     mergedTranslateMap.compute(pzTranslation.getKey(), (key, val) -> {
                         if (val == null || val.getId() < pzTranslation.getId()) {
@@ -129,11 +138,21 @@ public class MergeAndConvert {
                         }
                     });
                 } else {
-                    logger.debug("key:[{}]在global.ini不存在,跳过", pzTranslation.getKey());
+                    //如果paratranz上不存在，则使用英文原文
+                    PZTranslation fakePZTranslation = new PZTranslation();
+                    fakePZTranslation.setKey(entry.getKey());
+                    fakePZTranslation.setOriginal(enValue);
+                    fakePZTranslation.setTranslation(enValue);
+                    fakePZTranslation.setId(0L);
+                    mergedTranslateMap.put(entry.getKey(), fakePZTranslation);
+                    logger.debug("key:[{}]在global.ini不存在,将使用原文:{}", entry.getKey() , fakePZTranslation);
                 }
             }
         }
         logger.info("paratranz文件合并后共有[{}]行数据", mergedTranslateMap.size());
+        if (globalIniMap.size() != mergedTranslateMap.size()){
+            throw new RuntimeException("合并后行数[%d]与global.ini行数[%d]不一致,请联系开发查看问题".formatted(mergedTranslateMap.size(), globalIniMap.size()));
+        }
         return mergedTranslateMap;
     }
 

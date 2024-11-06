@@ -3,7 +3,7 @@ package cn.citizenwiki.model.dto.paratranz;
 import java.util.Objects;
 
 public class PZTranslation implements Cloneable {
-    private Integer id;
+    private Long id;
     private String key;
     private String original;
     private String translation;
@@ -11,11 +11,11 @@ public class PZTranslation implements Cloneable {
     private String context;
 
     // Getter and Setter methods
-    public Integer getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
