@@ -135,9 +135,6 @@ public class MergeAndConvert {
             PZTranslation pzTranslation = pzMap.get(entry.getKey());
             if (Objects.nonNull(pzTranslation)) {
                 //相同key保留id大的
-                if (pzTranslation.getKey().contains("mission_location_pyro_061o_02")){
-                    logger.info("key:[{}]", pzTranslation);
-                }
                 mergedTranslateMap.compute(pzTranslation.getKey(), (key, val) -> {
                     if (val == null || val.getId() < pzTranslation.getId()) {
                         return pzTranslation;
