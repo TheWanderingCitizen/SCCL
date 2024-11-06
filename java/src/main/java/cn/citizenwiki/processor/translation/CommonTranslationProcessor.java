@@ -94,9 +94,10 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
         githubApi.createPullRequest(lastFileVersion.getName(), BRANCH_NAME, lastFileVersion.getName());
         getLogger().info("[{}]提交[{}]分支pull request成功", getProcessorName(), BRANCH_NAME);
         //上传至cf r2
-        getLogger().info("[{}]开始上传文件至存储桶", getProcessorName());
-        s3Api.putObject(getBucketPath(lastFileVersion), Paths.get(OUTPUT_PATH));
-        getLogger().info("[{}]上传文件至存储桶成功", getProcessorName());
+        String bucketPath = getBucketPath(lastFileVersion);
+        getLogger().info("[{}]开始上传文件至存储桶[{}]", getProcessorName(), bucketPath);
+        s3Api.putObject(bucketPath, Paths.get(OUTPUT_PATH));
+        getLogger().info("[{}]上传文件至存储桶[{}]成功", getProcessorName(), bucketPath);
     }
 
     /**
