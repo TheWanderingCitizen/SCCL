@@ -23,7 +23,7 @@ jobs:
       run: mvn -f java/pom.xml compile
 
     - name: Copy dependencies # 复制依赖
-      run: mvn -f java/pom.xml dependency:copy-dependencies -DoutputDirectory=java/target/dependency
+      run: mvn -f java/pom.xml dependency:copy-dependencies -DoutputDirectory=target/dependency
 
     - name: Run Specified Java Class # 执行
       run: java -cp "java/target/classes:java/target/dependency/*" cn.citizenwiki.MergeAndConvert  # 运行指定类
