@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -113,42 +114,49 @@ public class MergeAndConvert {
     private Map<String, PZTranslation> mergeTranslateData(LinkedHashMap<String, String> globalIniMap, List<PZFile> pzFiles) {
         logger.info("开始拉取并合并paratranz汉化文件");
         Map<String, PZTranslation> mergedTranslateMap = new TreeMap<>();
+        Map<String, PZTranslation> pzMap = new HashMap<>(globalIniMap.size());
         for (PZFile pzFile : pzFiles) {
             if (pzFile.getFolder().equals("汉化规则")) {
                 //跳过非汉化文件
                 continue;
             }
-            logger.info("正在拉取[{}]并合并...",pzFile.getName());
-            Map<String, PZTranslation> pzMap = paratranzApi.fileTranslation(pzFile.getId())
+            logger.info("正在拉取[{}]...",pzFile.getName());
+            paratranzApi.fileTranslation(pzFile.getId())
                     .stream()
-                    .collect(Collectors.toMap(PZTranslation::getKey, pzTranslation -> pzTranslation));
-            //遍历源global.ini，使用paranz上的翻译
-            for (Map.Entry<String, String> entry : globalIniMap.entrySet()) {
-                //英文原文
-                String enValue = entry.getValue();
-                // 只处理 global.ini 中存在的 key,这样能够过滤掉已经被删除的key
-                PZTranslation pzTranslation = pzMap.get(entry.getKey());
-                if (Objects.nonNull(pzTranslation)) {
-                    //相同key保留id大的
-                    mergedTranslateMap.compute(pzTranslation.getKey(), (key, val) -> {
-                        if (val == null || val.getId() < pzTranslation.getId()) {
-                            return pzTranslation;
-                        } else {
-                            return val;
-                        }
-                    });
-                } else {
-                    //如果paratranz上不存在，则使用英文原文
-                    PZTranslation fakePZTranslation = new PZTranslation();
-                    fakePZTranslation.setKey(entry.getKey());
-                    fakePZTranslation.setOriginal(enValue);
-                    fakePZTranslation.setTranslation(enValue);
-                    fakePZTranslation.setId(0L);
-                    mergedTranslateMap.put(entry.getKey(), fakePZTranslation);
-                    logger.debug("key:[{}]在global.ini不存在,将使用原文:{}", entry.getKey() , fakePZTranslation);
+                    .collect(Collectors.toMap(PZTranslation::getKey, Function.identity(),
+                            //pz相同key保留id大的
+                            (v1, v2) -> v1.getId() > v2.getId() ? v1 : v2, () -> pzMap));
+        }
+        //遍历源global.ini，使用paranz上的翻译
+        for (Map.Entry<String, String> entry : globalIniMap.entrySet()) {
+            //英文原文
+            String enValue = entry.getValue();
+            // 只处理 global.ini 中存在的 key,这样能够过滤掉已经被删除的key
+            PZTranslation pzTranslation = pzMap.get(entry.getKey());
+            if (Objects.nonNull(pzTranslation)) {
+                //相同key保留id大的
+                if (pzTranslation.getKey().contains("mission_location_pyro_061o_02")){
+                    logger.info("key:[{}]", pzTranslation);
                 }
+                mergedTranslateMap.compute(pzTranslation.getKey(), (key, val) -> {
+                    if (val == null || val.getId() < pzTranslation.getId()) {
+                        return pzTranslation;
+                    } else {
+                        return val;
+                    }
+                });
+            } else {
+                //如果paratranz上不存在，则使用英文原文
+                PZTranslation fakePZTranslation = new PZTranslation();
+                fakePZTranslation.setKey(entry.getKey());
+                fakePZTranslation.setOriginal(enValue);
+                fakePZTranslation.setTranslation(enValue);
+                fakePZTranslation.setId(0L);
+                mergedTranslateMap.put(entry.getKey(), fakePZTranslation);
+                logger.debug("key:[{}]在global.ini不存在,将使用原文:{}", entry.getKey() , fakePZTranslation);
             }
         }
+
         logger.info("paratranz文件合并后共有[{}]行数据", mergedTranslateMap.size());
         if (globalIniMap.size() != mergedTranslateMap.size()){
             throw new RuntimeException("合并后行数[%d]与global.ini行数[%d]不一致,请联系开发查看问题".formatted(mergedTranslateMap.size(), globalIniMap.size()));
