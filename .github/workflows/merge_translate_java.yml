@@ -17,7 +17,7 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
         cache: maven
-        cache-dependency-path: 'pom.xml'
+        cache-dependency-path: 'java/pom.xml'
 
     - name: Compile with Maven # 编译项目
       run: mvn -f java/pom.xml compile
