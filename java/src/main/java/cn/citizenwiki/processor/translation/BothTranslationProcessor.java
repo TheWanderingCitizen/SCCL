@@ -35,7 +35,7 @@ public class BothTranslationProcessor extends CommonTranslationProcessor {
     public void processBw(PZTranslation pzTranslation, BufferedWriter bw) {
         String key = pzTranslation.getKey();
         String value = pzTranslation.getTranslation();
-        if (!value.contains("[")) {
+        if (HalfTranslationProcessor.needProcess(pzTranslation) && !value.contains("[")) {
             // 使用正则表达式
             boolean matches = Pattern.matches("^item_Name.*S\\d{2}.*$", key) || Pattern.matches("^item.*S\\d.*$", key);
             if ((key.contains("Stanton") && key.contains("_")) || key.contains("mission_location") || key.contains("mission_contractor") || matches) {

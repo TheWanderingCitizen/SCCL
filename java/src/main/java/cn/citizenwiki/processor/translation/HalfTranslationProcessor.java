@@ -22,7 +22,7 @@ public class HalfTranslationProcessor extends CommonTranslationProcessor {
     private static final Logger logger = LoggerFactory.getLogger(HalfTranslationProcessor.class);
 
     // 定义规则
-    private final List<String> startWithWords = Arrays.stream(new String[]{"item_Name", "vehicle_Name", "Pyro_JumpPoint_", "Stanton", "Terra_JumpPoint",
+    private static final List<String> startWithWords = Arrays.stream(new String[]{"item_Name", "vehicle_Name", "Pyro_JumpPoint_", "Stanton", "Terra_JumpPoint",
             "stanton2", "Pyro", "mission_location", "mission_Item", "mission_client", "items_"}).map(String::toLowerCase).toList();
 
     public HalfTranslationProcessor() {
@@ -67,11 +67,11 @@ public class HalfTranslationProcessor extends CommonTranslationProcessor {
 
     /**
      * 需要被处理返回true，否则false
-     *
+     * 该规则被暴露,使之可以被其它processor使用
      * @param PZTranslation
      * @return
      */
-    public boolean needProcess(PZTranslation PZTranslation) {
+    public static boolean needProcess(PZTranslation PZTranslation) {
         String keyLower = PZTranslation.getKey().toLowerCase();
         return ((startWithWords.stream().anyMatch(keyLower::startsWith)
                 || keyLower.contains("_repui")
