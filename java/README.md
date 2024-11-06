@@ -1,8 +1,7 @@
 # 使用说明
 
-1. fork[源汉化仓库](https://github.com/StarCitizenToolBox/LocalizationData)
-2. 保证fork仓库en分支的文件版本与paratranz最新文件相同
-3. 配置[环境变量](#环境变量配置)（github token需要保证有fork仓库、源汉化仓库的权限）
+1. 去[汉化仓库](https://github.com/TheWanderingCitizen/LocalizationData)点击fork sync
+3. 设置SW_PUBLISH的值(参考[开关](#开关))
 4. 执行action
 
 ## 环境变量配置
@@ -30,7 +29,7 @@ secret变量名参考merge_translate.yml
 ## 执行流程
 
 1. 从fork仓库拉取各个分支到不同目录，n个分支拉取n次
-2. 读取paratranz翻译结果，根据fork仓库en分支文件取对应key,若有不存在的key会提示
+2. 读取paratranz翻译结果，根据sccl仓库global.ini文件取对应key,合并翻译条目,若合并后条目数量不一致会报错
 3. 修改不同分支的文件，提交到fork仓库并提pr给源仓库以及上传到cdn
 
 ## 注意事项
