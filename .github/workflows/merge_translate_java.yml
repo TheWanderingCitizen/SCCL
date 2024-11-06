@@ -1,5 +1,4 @@
-
-name: merge translate
+name: java版发行汉化
 
 on:
   workflow_dispatch: # 允许手动触发
