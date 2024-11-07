@@ -4,6 +4,10 @@ on:
   workflow_dispatch: # 允许手动触发
 
 jobs:
+  permissions:
+    actions: write
+    contents: write
+
   build:
 
     runs-on: ubuntu-latest
