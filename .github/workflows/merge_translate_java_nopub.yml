@@ -4,10 +4,6 @@ on:
   workflow_dispatch: # 允许手动触发
 
 jobs:
-  permissions:
-    actions: write
-    contents: write
-
   build:
 
     runs-on: ubuntu-latest
@@ -23,6 +19,9 @@ jobs:
         base: main
         head: main
         auto_approve: true
+      permissions:
+        actions: write
+        contents: write
 
     - uses: tgymnich/fork-sync@v2.0 #同步fork仓库cn_e分支
       with:
@@ -32,6 +31,9 @@ jobs:
         base: cn_e
         head: cn_e
         auto_approve: true
+      permissions:
+        actions: write
+        contents: write
 
     - uses: tgymnich/fork-sync@v2.0 #同步fork仓库cn_e分支
       with:
@@ -41,6 +43,9 @@ jobs:
         base: cn_en
         head: cn_en
         auto_approve: true
+      permissions:
+        actions: write
+        contents: write
     
     - name: Set up JDK 21 # 配置 JDK 版本
       uses: actions/setup-java@v4 
