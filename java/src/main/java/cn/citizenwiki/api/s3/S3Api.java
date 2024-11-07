@@ -42,4 +42,8 @@ public class S3Api {
         return this.s3Client.putObject(putObjectRequest, RequestBody.fromFile(path));
     }
 
+    public static void main(String[] args) {
+
+    }
+
 }

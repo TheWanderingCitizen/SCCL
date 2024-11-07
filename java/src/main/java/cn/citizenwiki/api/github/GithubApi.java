@@ -3,9 +3,11 @@ package cn.citizenwiki.api.github;
 import cn.citizenwiki.api.BaseApi;
 import cn.citizenwiki.http.HttpException;
 import cn.citizenwiki.http.HttpStatus;
-import cn.citizenwiki.model.dto.github.GitHubContents;
-import cn.citizenwiki.model.dto.github.GithubPulls;
-import cn.citizenwiki.model.dto.github.PullRequest;
+import cn.citizenwiki.model.dto.github.request.MergeRequest;
+import cn.citizenwiki.model.dto.github.response.GitHubContents;
+import cn.citizenwiki.model.dto.github.response.GithubMergePR;
+import cn.citizenwiki.model.dto.github.response.GithubPulls;
+import cn.citizenwiki.model.dto.github.request.PullRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -39,32 +41,22 @@ public class GithubApi extends BaseApi {
         this.config = GithubConfig.INSTANCE;
     }
 
-
-    private static GithubHttpException handleGithubHttpException(HttpException e) {
-        String msg = e.getMessage();
-        if (HttpStatus.FORBIDDEN.getCode() == e.getResponse().statusCode()) {
-            List<String> permissions = e.getResponse().headers().map().get(GithubHeaderConstants.ACCEPTED_PERMISSIONS);
-            if (permissions != null && !permissions.isEmpty()) {
-                msg += " " + GithubHeaderConstants.ACCEPTED_PERMISSIONS + ":" + String.join(",", permissions);
-            }
-        }
-        return new GithubHttpException(e, msg);
-    }
-
     /**
      * 创建一个新的 Pull Request
-     *
-     * @param title      Pull Request 的标题
-     * @param branchName 源仓库的目标分支（如 "main" 或 "master"）
-     * @param body       Pull Request 的正文内容
+     * @param title Pull Request 的标题
+     * @param sourceOwner 源仓库owner
+     * @param targetOwner 目标仓库owner
+     * @param targetRepo 目标仓库名
+     * @param branchName 目标分支
+     * @param body Pull Request 的正文内容
      * @return 创建的 Pull Request 的详细信息
      * @see <a href="https://docs.github.com/zh/rest/pulls/pulls?apiVersion=2022-11-28#create-a-pull-request">文档</a>
      */
-    public GithubPulls createPullRequest(String title, String branchName, String body) {
-        String url = String.format("%s/repos/%s/%s/pulls", GithubConfig.BASE_API_URL, config.getTargetUsername(), config.getTargetRepo());
+    public GithubPulls createPullRequest(String title, String sourceOwner, String targetOwner, String targetRepo, String branchName, String body) {
+        String url = String.format("%s/repos/%s/%s/pulls", GithubConfig.BASE_API_URL, targetOwner, targetRepo);
 
         // 使用 Jackson 库构建 JSON 请求体
-        PullRequest pullRequest = new PullRequest(title, config.getForkOwner() + ":" + branchName, branchName, body);
+        PullRequest pullRequest = new PullRequest(title, sourceOwner + ":" + branchName, branchName, body);
         String jsonBody;
         try {
             jsonBody = GithubJacksonTools.om.writeValueAsString(pullRequest);
@@ -75,16 +67,63 @@ public class GithubApi extends BaseApi {
                 .uri(URI.create(url))
                 .POST(BodyPublishers.ofString(jsonBody))
                 .build();
-        return sendRequestOfJsonResp(request, GithubJacksonTools.PULLS);
+        return sendRequestOfJsonResp(request, GithubJacksonTools.PULL);
     }
 
-    public GitHubContents getContent(String userName, String repo, String branchName, String contentPath) {
-        String url = String.format("%s/repos/%s/%s/contents/%s?ref=%s", GithubConfig.BASE_API_URL, userName, repo, contentPath, branchName);
+    /**
+     * 合并 Pull Request
+     * @param owner 目标仓库拥有者
+     * @param repo 目标仓库
+     * @param pullNumber pr编号
+     * @param title 通过信息-标题
+     * @param message 通过信息-正文
+     * @param mergeMethod 合并方式
+     * @return
+     */
+    public GithubMergePR mergePullRequest(String owner, String repo, Long pullNumber, String title, String message, MergeRequest.MergeMethod mergeMethod) {
+        String url = String.format("%s/repos/%s/%s/pulls/%d/merge", GithubConfig.BASE_API_URL, owner, repo, pullNumber);
+
+        // 使用 Jackson 库构建 JSON 请求体
+        MergeRequest mergeRequest = new MergeRequest(title, message, mergeMethod);
+        String jsonBody;
+        try {
+            jsonBody = GithubJacksonTools.om.writeValueAsString(mergeRequest);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        HttpRequest request = authJsonRequestBuilder()
+                .uri(URI.create(url))
+                .POST(BodyPublishers.ofString(jsonBody))
+                .build();
+        return sendRequestOfJsonResp(request, GithubJacksonTools.MERGE_PR);
+    }
+
+    /**
+     * 获取目标仓库文件信息
+     * @param owner 目标仓库的拥有者
+     * @param repo 目标仓库名称
+     * @param branchName 分支名称
+     * @param contentPath 文件路径
+     * @return
+     */
+    public GitHubContents getContent(String owner, String repo, String branchName, String contentPath) {
+        String url = String.format("%s/repos/%s/%s/contents/%s?ref=%s", GithubConfig.BASE_API_URL, owner, repo, contentPath, branchName);
         HttpRequest request = authJsonRequestBuilder()
                 .uri(URI.create(url))
                 .GET()
                 .build();
-        return sendRequestOfJsonResp(request, GithubJacksonTools.CONTENTS);
+        return sendRequestOfJsonResp(request, GithubJacksonTools.CONTENT);
+    }
+
+    private static GithubHttpException handleGithubHttpException(HttpException e) {
+        String msg = e.getMessage();
+        if (HttpStatus.FORBIDDEN.getCode() == e.getResponse().statusCode()) {
+            List<String> permissions = e.getResponse().headers().map().get(GithubHeaderConstants.ACCEPTED_PERMISSIONS);
+            if (permissions != null && !permissions.isEmpty()) {
+                msg += " " + GithubHeaderConstants.ACCEPTED_PERMISSIONS + ":" + String.join(",", permissions);
+            }
+        }
+        return new GithubHttpException(e, msg);
     }
 
     public InputStream downloadContent(String userName, String repo, String branchName, String contentPath) {

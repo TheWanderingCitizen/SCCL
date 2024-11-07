@@ -1,4 +1,4 @@
-package cn.citizenwiki.model.dto.github;
+package cn.citizenwiki.model.dto.github.response;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -17,7 +17,7 @@ public class GithubPulls {
     private String reviewCommentUrl;
     private String commentsUrl;
     private String statusesUrl;
-    private Integer number;
+    private Long number;
     private String state;
     private Boolean locked;
     private String title;
@@ -151,11 +151,11 @@ public class GithubPulls {
         this.statusesUrl = statusesUrl;
     }
 
-    public Integer getNumber() {
+    public Long getNumber() {
         return number;
     }
 
-    public void setNumber(Integer number) {
+    public void setNumber(Long number) {
         this.number = number;
     }
 

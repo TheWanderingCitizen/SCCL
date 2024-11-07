@@ -1,7 +1,8 @@
 package cn.citizenwiki.api.github;
 
-import cn.citizenwiki.model.dto.github.GitHubContents;
-import cn.citizenwiki.model.dto.github.GithubPulls;
+import cn.citizenwiki.model.dto.github.response.GitHubContents;
+import cn.citizenwiki.model.dto.github.response.GithubMergePR;
+import cn.citizenwiki.model.dto.github.response.GithubPulls;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,8 +15,9 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 public class GithubJacksonTools {
 
     public static final ObjectMapper om;
-    public static final TypeReference<GithubPulls> PULLS = new TypeReference<>() {};
-    public static final TypeReference<GitHubContents> CONTENTS = new TypeReference<>() {};
+    public static final TypeReference<GithubPulls> PULL = new TypeReference<>() {};
+    public static final TypeReference<GitHubContents> CONTENT = new TypeReference<>() {};
+    public static final TypeReference<GithubMergePR> MERGE_PR = new TypeReference<>() {};
 
     static {
         ObjectMapper objectMapper = new ObjectMapper();

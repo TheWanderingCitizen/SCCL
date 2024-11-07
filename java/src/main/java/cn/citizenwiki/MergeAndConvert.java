@@ -1,11 +1,9 @@
 package cn.citizenwiki;
 
-import cn.citizenwiki.api.github.GithubApi;
-import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.paratranz.ParatranzApi;
 import cn.citizenwiki.model.dto.FileVersion;
-import cn.citizenwiki.model.dto.paratranz.PZFile;
-import cn.citizenwiki.model.dto.paratranz.PZTranslation;
+import cn.citizenwiki.model.dto.paratranz.response.PZFile;
+import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.processor.translation.*;
 import cn.citizenwiki.utils.GlobalIniUtil;
 import cn.citizenwiki.utils.ParatranzFileUtil;

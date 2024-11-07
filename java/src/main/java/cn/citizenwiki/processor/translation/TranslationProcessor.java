@@ -1,7 +1,7 @@
 package cn.citizenwiki.processor.translation;
 
 import cn.citizenwiki.model.dto.FileVersion;
-import cn.citizenwiki.model.dto.paratranz.PZTranslation;
+import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.processor.BaseProcessor;
 
 /**

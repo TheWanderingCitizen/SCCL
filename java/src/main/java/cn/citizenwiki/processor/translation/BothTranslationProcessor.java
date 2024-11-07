@@ -4,7 +4,7 @@ package cn.citizenwiki.processor.translation;
 import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.s3.S3Config;
 import cn.citizenwiki.model.dto.FileVersion;
-import cn.citizenwiki.model.dto.paratranz.PZTranslation;
+import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

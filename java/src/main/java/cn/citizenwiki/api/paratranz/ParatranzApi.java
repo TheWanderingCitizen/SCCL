@@ -2,8 +2,8 @@ package cn.citizenwiki.api.paratranz;
 
 import cn.citizenwiki.api.BaseApi;
 import cn.citizenwiki.http.HttpException;
-import cn.citizenwiki.model.dto.paratranz.PZFile;
-import cn.citizenwiki.model.dto.paratranz.PZTranslation;
+import cn.citizenwiki.model.dto.paratranz.response.PZFile;
+import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package cn.citizenwiki.model.dto.github;
+package cn.citizenwiki.model.dto.github.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

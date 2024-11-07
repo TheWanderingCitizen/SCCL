@@ -2,7 +2,7 @@ package cn.citizenwiki.processor.translation;
 
 import cn.citizenwiki.MergeAndConvert;
 import cn.citizenwiki.model.dto.FileVersion;
-import cn.citizenwiki.model.dto.paratranz.PZTranslation;
+import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,4 +1,4 @@
-package cn.citizenwiki.model.dto.github;
+package cn.citizenwiki.model.dto.github.request;
 
 /**
  * github api PullRequest请求体

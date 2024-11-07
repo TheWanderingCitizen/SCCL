@@ -1,4 +1,4 @@
-package cn.citizenwiki.model.dto.paratranz;
+package cn.citizenwiki.model.dto.paratranz.response;
 
 public class Progress {
     private Double translate;

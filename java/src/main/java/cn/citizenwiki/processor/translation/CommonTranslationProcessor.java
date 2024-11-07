@@ -6,7 +6,9 @@ import cn.citizenwiki.api.github.GithubApi;
 import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.s3.S3Api;
 import cn.citizenwiki.model.dto.FileVersion;
-import cn.citizenwiki.model.dto.paratranz.PZTranslation;
+import cn.citizenwiki.model.dto.github.request.MergeRequest;
+import cn.citizenwiki.model.dto.github.response.GithubPulls;
+import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.utils.FileUtil;
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
@@ -58,6 +60,14 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
         try {
             //先删除目录
             FileUtil.deleteDirectory(OUTPUT_DIR);
+            //同步仓库最新内容
+            getLogger().info("[{}]开始fork sync[{}]分支", getProcessorName(), BRANCH_NAME);
+            GithubPulls pullRequest = githubApi.createPullRequest("fork sync", GithubConfig.INSTANCE.getTargetUsername(),
+                    GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getForkRepo(),
+                    BRANCH_NAME, "fork sync");
+            githubApi.mergePullRequest(GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getForkRepo(),
+                    pullRequest.getNumber(),"fork sync", "fork sync", MergeRequest.MergeMethod.rebase);
+            getLogger().info("[{}]fork sync[{}]分支成功", getProcessorName(), BRANCH_NAME);
             //拉取github fork仓库的代码
             this.git = gitCloneRepo(OUTPUT_DIR, BRANCH_NAME);
             // 使用 Files.createFile 创建目标文件
@@ -91,7 +101,9 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
         git.close();
         //向sctoolbox提交pull request
         getLogger().info("[{}]开始提交[{}]分支pull request", getProcessorName(), BRANCH_NAME);
-        githubApi.createPullRequest(lastFileVersion.getName(), BRANCH_NAME, lastFileVersion.getName());
+        githubApi.createPullRequest(lastFileVersion.getName(), GithubConfig.INSTANCE.getForkOwner(),
+                GithubConfig.INSTANCE.getTargetUsername(), GithubConfig.INSTANCE.getTargetRepo(),
+                BRANCH_NAME, lastFileVersion.getName());
         getLogger().info("[{}]提交[{}]分支pull request成功", getProcessorName(), BRANCH_NAME);
         //上传至cf r2
         String bucketPath = getBucketPath(lastFileVersion);

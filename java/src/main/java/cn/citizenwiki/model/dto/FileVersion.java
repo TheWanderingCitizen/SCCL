@@ -1,6 +1,6 @@
 package cn.citizenwiki.model.dto;
 
-import cn.citizenwiki.model.dto.paratranz.PZFile;
+import cn.citizenwiki.model.dto.paratranz.response.PZFile;
 import cn.citizenwiki.utils.ParatranzFileUtil;
 
 /**

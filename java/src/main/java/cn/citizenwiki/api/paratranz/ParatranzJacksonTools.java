@@ -1,7 +1,7 @@
 package cn.citizenwiki.api.paratranz;
 
-import cn.citizenwiki.model.dto.paratranz.PZFile;
-import cn.citizenwiki.model.dto.paratranz.PZTranslation;
+import cn.citizenwiki.model.dto.paratranz.response.PZFile;
+import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;

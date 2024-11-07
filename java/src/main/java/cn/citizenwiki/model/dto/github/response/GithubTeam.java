@@ -1,4 +1,4 @@
-package cn.citizenwiki.model.dto.github;
+package cn.citizenwiki.model.dto.github.response;
 
 public class GithubTeam {
 
