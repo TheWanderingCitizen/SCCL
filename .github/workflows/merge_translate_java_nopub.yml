@@ -18,6 +18,8 @@ jobs:
     - uses: tgymnich/fork-sync@v2.0 #同步fork仓库main分支
       with:
         token: ${{ secrets.GH_TOKEN }}
+        github_token: ${{ secrets.GH_TOKEN }}
+        personal_token: ${{ secrets.GH_TOKEN }}
         owner: ${{ secrets.GH_FORK_USERNAME }}
         repo: ${{ secrets.GH_FORK_REPO }}
         base: main
