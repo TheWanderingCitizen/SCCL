@@ -10,6 +10,31 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4  # 拉取仓库代码
+
+
+    - uses: tgymnich/fork-sync@v2.0 #同步fork仓库main分支
+      with:
+        token: ${{ secrets.GH_TOKEN }}
+        owner: ${{ secrets.GH_FORK_USERNAME }}
+        repo: ${{ secrets.GH_FORK_REPO }}
+        base: main
+        head: main
+
+    - uses: tgymnich/fork-sync@v2.0 #同步fork仓库cn_e分支
+      with:
+        token: ${{ secrets.GH_TOKEN }}
+        owner: ${{ secrets.GH_FORK_USERNAME }}
+        repo: ${{ secrets.GH_FORK_REPO }}
+        base: cn_e
+        head: cn_e
+
+    - uses: tgymnich/fork-sync@v2.0 #同步fork仓库cn_e分支
+      with:
+        token: ${{ secrets.GH_TOKEN }}
+        owner: ${{ secrets.GH_FORK_USERNAME }}
+        repo: ${{ secrets.GH_FORK_REPO }}
+        base: cn_en
+        head: cn_en
     
     - name: Set up JDK 21 # 配置 JDK 版本
       uses: actions/setup-java@v4 
