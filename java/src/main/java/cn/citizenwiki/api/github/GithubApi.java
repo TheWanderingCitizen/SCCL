@@ -52,7 +52,7 @@ public class GithubApi extends BaseApi {
      * @return 创建的 Pull Request 的详细信息
      * @see <a href="https://docs.github.com/zh/rest/pulls/pulls?apiVersion=2022-11-28#create-a-pull-request">文档</a>
      */
-    public GithubPulls createPullRequest(String title, String sourceOwner, String targetOwner, String targetRepo, String branchName, String body) {
+    public GithubPulls createPullRequest(String title, String sourceOwner, String targetOwner, String targetRepo, String branchName, String body) throws GithubHttpException {
         String url = String.format("%s/repos/%s/%s/pulls", GithubConfig.BASE_API_URL, targetOwner, targetRepo);
 
         // 使用 Jackson 库构建 JSON 请求体
@@ -80,7 +80,7 @@ public class GithubApi extends BaseApi {
      * @param mergeMethod 合并方式
      * @return
      */
-    public GithubMergePR mergePullRequest(String owner, String repo, Long pullNumber, String title, String message, MergeRequest.MergeMethod mergeMethod) {
+    public GithubMergePR mergePullRequest(String owner, String repo, Long pullNumber, String title, String message, MergeRequest.MergeMethod mergeMethod) throws GithubHttpException {
         String url = String.format("%s/repos/%s/%s/pulls/%d/merge", GithubConfig.BASE_API_URL, owner, repo, pullNumber);
 
         // 使用 Jackson 库构建 JSON 请求体
@@ -106,7 +106,7 @@ public class GithubApi extends BaseApi {
      * @param contentPath 文件路径
      * @return
      */
-    public GitHubContents getContent(String owner, String repo, String branchName, String contentPath) {
+    public GitHubContents getContent(String owner, String repo, String branchName, String contentPath) throws GithubHttpException {
         String url = String.format("%s/repos/%s/%s/contents/%s?ref=%s", GithubConfig.BASE_API_URL, owner, repo, contentPath, branchName);
         HttpRequest request = authJsonRequestBuilder()
                 .uri(URI.create(url))
@@ -126,7 +126,7 @@ public class GithubApi extends BaseApi {
         return new GithubHttpException(e, msg);
     }
 
-    public InputStream downloadContent(String userName, String repo, String branchName, String contentPath) {
+    public InputStream downloadContent(String userName, String repo, String branchName, String contentPath) throws GithubHttpException {
         GitHubContents content = getContent(userName, repo, branchName, contentPath);
         HttpRequest request = authJsonRequestBuilder()
                 .uri(URI.create(content.getDownloadUrl()))
@@ -176,7 +176,7 @@ public class GithubApi extends BaseApi {
      * @param <T> json结构对应的实体
      * @return java bean
      */
-    private <T> T sendRequestOfJsonResp(HttpRequest request, TypeReference<T> typeReference) {
+    private <T> T sendRequestOfJsonResp(HttpRequest request, TypeReference<T> typeReference) throws GithubHttpException {
         String json = null;
         try (InputStream respInputStream = sendRequestWithRetry(request, GithubConfig.INSTANCE.getRetryNum(), GithubConfig.INSTANCE.getUnitTime())) {
             json = new String(respInputStream.readAllBytes(), StandardCharsets.UTF_8);
@@ -188,7 +188,7 @@ public class GithubApi extends BaseApi {
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (HttpException e) {
-            throw new RuntimeException(handleGithubHttpException(e));
+            throw handleGithubHttpException(e);
         }
     }
 

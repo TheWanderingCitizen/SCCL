@@ -4,6 +4,7 @@ package cn.citizenwiki.processor.translation;
 import cn.citizenwiki.GlobalConfig;
 import cn.citizenwiki.api.github.GithubApi;
 import cn.citizenwiki.api.github.GithubConfig;
+import cn.citizenwiki.api.github.GithubHttpException;
 import cn.citizenwiki.api.s3.S3Api;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.github.request.MergeRequest;
@@ -62,12 +63,19 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
             FileUtil.deleteDirectory(OUTPUT_DIR);
             //同步仓库最新内容
             getLogger().info("[{}]开始fork sync[{}]分支", getProcessorName(), BRANCH_NAME);
-            GithubPulls pullRequest = githubApi.createPullRequest("fork sync", GithubConfig.INSTANCE.getTargetUsername(),
-                    GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getForkRepo(),
-                    BRANCH_NAME, "fork sync");
-            githubApi.mergePullRequest(GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getForkRepo(),
-                    pullRequest.getNumber(),"fork sync", "fork sync", MergeRequest.MergeMethod.rebase);
-            getLogger().info("[{}]fork sync[{}]分支成功", getProcessorName(), BRANCH_NAME);
+            try {
+                GithubPulls pullRequest = githubApi.createPullRequest("fork sync", GithubConfig.INSTANCE.getTargetUsername(),
+                        GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getForkRepo(),
+                        BRANCH_NAME, "fork sync");
+                githubApi.mergePullRequest(GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getForkRepo(),
+                        pullRequest.getNumber(),"fork sync", "fork sync", MergeRequest.MergeMethod.rebase);
+            } catch (GithubHttpException e) {
+                if ("422".equals(e.getGitHubErrorResponse().getStatus())){
+                    getLogger().info("[{}]无需fork sync[{}]分支，详情：{}", getProcessorName(), BRANCH_NAME, e.getGitHubErrorResponse());
+                }else{
+                    getLogger().error("[{}]fork sync[{}]分支失败，详情：{}", getProcessorName(), BRANCH_NAME, e.getGitHubErrorResponse());
+                }
+            }
             //拉取github fork仓库的代码
             this.git = gitCloneRepo(OUTPUT_DIR, BRANCH_NAME);
             // 使用 Files.createFile 创建目标文件
@@ -101,9 +109,13 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
         git.close();
         //向sctoolbox提交pull request
         getLogger().info("[{}]开始提交[{}]分支pull request", getProcessorName(), BRANCH_NAME);
-        githubApi.createPullRequest(lastFileVersion.getName(), GithubConfig.INSTANCE.getForkOwner(),
-                GithubConfig.INSTANCE.getTargetUsername(), GithubConfig.INSTANCE.getTargetRepo(),
-                BRANCH_NAME, lastFileVersion.getName());
+        try {
+            githubApi.createPullRequest(lastFileVersion.getName(), GithubConfig.INSTANCE.getForkOwner(),
+                    GithubConfig.INSTANCE.getTargetUsername(), GithubConfig.INSTANCE.getTargetRepo(),
+                    BRANCH_NAME, lastFileVersion.getName());
+        } catch (GithubHttpException e) {
+            throw new RuntimeException(e);
+        }
         getLogger().info("[{}]提交[{}]分支pull request成功", getProcessorName(), BRANCH_NAME);
         //上传至cf r2
         String bucketPath = getBucketPath(lastFileVersion);
