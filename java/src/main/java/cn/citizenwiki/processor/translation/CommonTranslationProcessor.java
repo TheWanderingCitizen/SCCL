@@ -41,7 +41,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
     //输出文件路径
     private final String OUTPUT_PATH;
     //要拉去以及提交的git仓库url（非scbox）
-    private final String GIT_REMOTE = "https://github.com/" + GithubConfig.INSTANCE.getForkOwner() + "/" + GithubConfig.INSTANCE.getForkRepo();
+    private final String GIT_REMOTE;
     //输出文件的outputstream
     private BufferedWriter bw;
     //jgit,用于拉取推送代码
@@ -53,6 +53,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
         this.BRANCH_NAME = BRANCH_NAME;
         this.OUTPUT_DIR = GlobalConfig.OUTPUT_DIR + "/" + this.BRANCH_NAME;
         this.OUTPUT_PATH = OUTPUT_DIR + "/" + GithubConfig.CN_GLOBAL_INI_PATH;
+        this.GIT_REMOTE = "https://github.com/" + GithubConfig.INSTANCE.getForkOwner() + "/" + GithubConfig.INSTANCE.getForkRepo();
     }
 
     @Override
