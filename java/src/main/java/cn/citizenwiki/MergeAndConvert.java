@@ -1,6 +1,8 @@
 package cn.citizenwiki;
 
 import cn.citizenwiki.api.paratranz.ParatranzApi;
+import cn.citizenwiki.api.s3.S3Api;
+import cn.citizenwiki.api.s3.S3Config;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.paratranz.response.PZFile;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
@@ -13,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.*;
@@ -31,6 +34,8 @@ public class MergeAndConvert {
     //词条处理器
     private final TranslationProcessor[] translationProcessors =
             new TranslationProcessor[]{new FullTranslationProcessor(), new HalfTranslationProcessor(), new BothTranslationProcessor()};
+
+    private final S3Api s3Api = S3Api.INSTANCE;
 
     /**
      * processor多线程执行器
@@ -64,20 +69,25 @@ public class MergeAndConvert {
                 .max(Comparator.naturalOrder())
                 .get();
         logger.info("最新版本号为：{}", lastFileVersion.getName());
-//        logger.info("从fork仓库[{}]分支拉取global.ini数据，此数据将作为基准数据", GithubConfig.EN_BRANCH_NAME);
-//        //从fork仓库en分支下载global.ini
-//        InputStream inputStream =
-//                GithubApi.INSTANCE.downloadContent(GithubConfig.INSTANCE.getForkOwner(),
-//                        GithubConfig.INSTANCE.getForkRepo(), GithubConfig.EN_BRANCH_NAME, GithubConfig.EN_GLOBAL_INI_PATH);
         //从本地读取global.ini
         logger.info("正在读取global.ini数据，此数据将作为基准数据...");
-        InputStream inputStream = Files.newInputStream(Paths.get("global.ini"));
+        Path sourcePath = Paths.get("global.ini");
+        InputStream inputStream = Files.newInputStream(sourcePath);
         //转换global.ini
         LinkedHashMap<String, String> globalIniMap = GlobalIniUtil.convertIniToMap(inputStream);
         if (globalIniMap.isEmpty()) {
+            logger.error("未从global.ini解析到条目，请检查文件是否正确");
             return;
         }
         logger.info("读取到{}行数据", globalIniMap.size());
+        //将原始文件上传到存储桶
+        if (GlobalConfig.SW_PUBLISH){
+            String bucketPath = S3Config.ORGINAL_DIR + "/global.ini";
+            logger.info("正在上传global.ini至存储桶[{}]", bucketPath);
+            s3Api.putObject(bucketPath, sourcePath);
+            logger.info("成功上传global.ini至存储桶[{}]", bucketPath);
+        }
+        //合并pz上的汉化
         Map<String, PZTranslation> mergedTranslateMap = Collections.unmodifiableMap(mergeTranslateData(globalIniMap, pzFiles));
         if (mergedTranslateMap.isEmpty()) {
             return;
