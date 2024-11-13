@@ -37,7 +37,7 @@ public class FileVersion implements Comparable<FileVersion> {
 
     public enum Profile{
         PTU,
-        PU,
+        Live,
     }
 
 
