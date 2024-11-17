@@ -143,13 +143,17 @@ public class MergeAndConvert {
             PZTranslation pzTranslation = pzMap.get(entry.getKey());
             if (Objects.nonNull(pzTranslation)) {
                 //相同key保留id大的
-                mergedTranslateMap.compute(pzTranslation.getKey(), (key, val) -> {
+                PZTranslation winPz = mergedTranslateMap.compute(pzTranslation.getKey(), (key, val) -> {
                     if (val == null || val.getId() < pzTranslation.getId()) {
                         return pzTranslation;
                     } else {
                         return val;
                     }
                 });
+                //如果翻译文本为空，填充原文
+                if (winPz.getTranslation().isBlank()) {
+                    winPz.setTranslation(enValue);
+                }
             } else {
                 //如果paratranz上不存在，则使用英文原文
                 PZTranslation fakePZTranslation = new PZTranslation();
