@@ -70,7 +70,7 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
                 //将任务地名中的译名替换为译名[原文]，比如“哈哈斯坦顿”→“哈哈斯坦顿[Stanton]”
                 Set<String> replacedWords = new HashSet<>();
                 for (Map.Entry<String, String> entry : localtionMap.entrySet()) {
-                    if (translation.contains(entry.getKey()) && isReplacedWords(replacedWords, entry.getKey())) {
+                    if (translation.contains(entry.getKey()) && !isReplacedWords(replacedWords, entry.getKey())) {
                         translation = translation.replace(entry.getKey(), entry.getKey() + "["+entry.getValue()+"]");
                         replacedWords.add(entry.getKey());
                     }
