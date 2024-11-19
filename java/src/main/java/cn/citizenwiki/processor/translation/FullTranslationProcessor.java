@@ -10,7 +10,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 全汉化处理器
@@ -25,7 +30,14 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
      * 在替换时，为防止“派罗V”被替换成“派罗[Pyro]V[Pyro V]”，所以需要按照字典序倒序先替换“派罗V”，
      * 这样在替换词检索到“派罗”时，判断已替换关键词中是否包含当前关键词，即可避免上述情况
      */
-    private static final Map<String, String> localtionMap = new TreeMap<>(Collections.reverseOrder());
+    private final Map<String, String> localtionMap = new TreeMap<>(Collections.reverseOrder());
+
+    private static final String IGNORE_FILE_NAME = "ignore_replace_search_keys.txt";
+    /**
+     * 替换搜索关键词时需要被过滤掉的key
+     */
+    private final Set<String> ignoreReplaceSearchKeys = new HashSet<>();
+
 
     // 定义规则
 
@@ -41,6 +53,19 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
             String key = entry.getKey();
             if (isLocationKey(key)) {
                 localtionMap.put(entry.getValue().getTranslation(), entry.getValue().getOriginal());
+            }
+        }
+        //读取过滤文件
+        Path sourcePath = Paths.get(IGNORE_FILE_NAME);
+        if (Files.exists(sourcePath)) {
+            try {
+                for (String ignoreKey : Files.readAllLines(sourcePath)) {
+                    if (!ignoreKey.isBlank()){
+                        ignoreReplaceSearchKeys.add(ignoreKey.strip());
+                    }
+                }
+            } catch (IOException e) {
+                logger.warn("读取"+IGNORE_FILE_NAME+"异常，替换搜索文本时将不会过滤任何关键词", e);
             }
         }
     }
