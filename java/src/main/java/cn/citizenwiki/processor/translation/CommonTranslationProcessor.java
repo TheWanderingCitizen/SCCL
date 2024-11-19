@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -57,7 +58,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
     }
 
     @Override
-    public void beforeProcess() {
+    public void beforeProcess(Map<String, PZTranslation> mergedTranslateMap) {
         Path filePath = Paths.get(OUTPUT_PATH);
         try {
             //先删除目录
