@@ -91,7 +91,7 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
         //写入文件
         if (bw != null) {
             String translation = pzTranslation.getTranslation();
-            if (pzTranslation.getKey().startsWith("mission_location")){
+            if (pzTranslation.getKey().startsWith("mission_location") && !ignoreReplaceSearchKeys.contains(pzTranslation.getKey())) {
                 //将任务地名中的译名替换为译名[原文]，比如“哈哈斯坦顿”→“哈哈斯坦顿[Stanton]”
                 Set<String> replacedWords = new HashSet<>();
                 for (Map.Entry<String, String> entry : localtionMap.entrySet()) {
