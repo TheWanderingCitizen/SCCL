@@ -10,8 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 全汉化处理器
@@ -21,9 +20,12 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
     private static final Logger logger = LoggerFactory.getLogger(FullTranslationProcessor.class);
 
     /**
+     * 字典序倒序排列的map
      * <地点译文名，地点英文名>
+     * 在替换时，为防止“派罗V”被替换成“派罗[Pyro]V[Pyro V]”，所以需要按照字典序倒序先替换“派罗V”，
+     * 这样在替换词检索到“派罗”时，判断已替换关键词中是否包含当前关键词，即可避免上述情况
      */
-    private static final Map<String, String> localtionMap = new HashMap<>();
+    private static final Map<String, String> localtionMap = new TreeMap<>(Collections.reverseOrder());
 
     // 定义规则
 
@@ -66,11 +68,14 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
             String translation = pzTranslation.getTranslation();
             if (pzTranslation.getKey().startsWith("mission_location")){
                 //将任务地名中的译名替换为译名[原文]，比如“哈哈斯坦顿”→“哈哈斯坦顿[Stanton]”
+                Set<String> replacedWords = new HashSet<>();
                 for (Map.Entry<String, String> entry : localtionMap.entrySet()) {
-                    if (translation.contains(entry.getKey())) {
+                    if (translation.contains(entry.getKey()) && isReplacedWords(replacedWords, entry.getKey())) {
                         translation = translation.replace(entry.getKey(), entry.getKey() + "["+entry.getValue()+"]");
+                        replacedWords.add(entry.getKey());
                     }
                 }
+                logger.debug("key：[{}]中的地点已被替换，替换后译文：[{}]", pzTranslation.getKey(), translation);
             }
             try {
                 bw.write(pzTranslation.getKey() + "=" + translation);
@@ -79,6 +84,21 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    /**
+     * 当前关键词是否存在于已替换的关键词中，防止出现重复替换
+     * @param replacedWords
+     * @param key
+     * @return
+     */
+    private boolean isReplacedWords(Set<String> replacedWords, String key) {
+        for (String replacedWord : replacedWords) {
+            if (replacedWord.contains(key)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
