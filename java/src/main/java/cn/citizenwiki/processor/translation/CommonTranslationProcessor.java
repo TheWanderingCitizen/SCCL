@@ -1,11 +1,11 @@
 package cn.citizenwiki.processor.translation;
 
 
-import cn.citizenwiki.config.GlobalConfig;
 import cn.citizenwiki.api.github.GithubApi;
 import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.github.GithubHttpException;
 import cn.citizenwiki.api.s3.S3Api;
+import cn.citizenwiki.config.GlobalConfig;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.github.request.MergeRequest;
 import cn.citizenwiki.model.dto.github.response.GithubPulls;
