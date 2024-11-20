@@ -40,12 +40,6 @@ public class SearchableLocationReplacer {
      */
     private final Set<String> ignoreReplaceSearchKeys = new HashSet<>();
 
-    /**
-     * 覆盖替换的关键词映射
-     */
-    private Map<String, String> overrideMappings = new HashMap<>();
-
-
     public SearchableLocationReplacer(Map<String, PZTranslation> mergedTranslateMap) {
         //找到所有地点封装到Map
         for (Map.Entry<String, PZTranslation> entry : mergedTranslateMap.entrySet()) {
