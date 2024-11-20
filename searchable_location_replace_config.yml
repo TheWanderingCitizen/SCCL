@@ -1,0 +1,6 @@
+# 地点替换相关配置
+ignoreKeys: #哪些key会被忽略（不进行替换）
+  #- "2019_Ann_Sale_Day9"
+  #- "2019_Ann_Sale_Day8"
+overrideMappings: #自定义替换文本
+  #派罗 888: 派罗发发发

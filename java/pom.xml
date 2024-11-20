@@ -86,6 +86,12 @@
             <artifactId>url-connection-client</artifactId>
             <version>${awssdk.version}</version>
         </dependency>
+        <!--yaml解析-->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.3</version>
+        </dependency>
 
     </dependencies>
 

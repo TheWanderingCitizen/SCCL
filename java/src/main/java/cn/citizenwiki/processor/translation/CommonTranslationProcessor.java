@@ -1,7 +1,7 @@
 package cn.citizenwiki.processor.translation;
 
 
-import cn.citizenwiki.GlobalConfig;
+import cn.citizenwiki.config.GlobalConfig;
 import cn.citizenwiki.api.github.GithubApi;
 import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.github.GithubHttpException;

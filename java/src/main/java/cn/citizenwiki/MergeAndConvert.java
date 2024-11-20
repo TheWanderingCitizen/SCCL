@@ -3,6 +3,7 @@ package cn.citizenwiki;
 import cn.citizenwiki.api.paratranz.ParatranzApi;
 import cn.citizenwiki.api.s3.S3Api;
 import cn.citizenwiki.api.s3.S3Config;
+import cn.citizenwiki.config.GlobalConfig;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.paratranz.response.PZFile;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;

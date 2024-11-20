@@ -1,10 +1,13 @@
 package cn.citizenwiki.utils;
 
+import cn.citizenwiki.config.SearchableLocationReplaceConfig;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.processor.translation.FullTranslationProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.Yaml;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,11 +33,18 @@ public class SearchableLocationReplacer {
      */
     private final Map<String, String> localtionMap = new TreeMap<>(Collections.reverseOrder());
 
-    private static final String IGNORE_FILE_NAME = "ignore_replace_search_keys.txt";
+    private static final String CONFIG_FILE_NAME = "searchable_location_replace_config.yml";
+
     /**
      * 替换搜索关键词时需要被过滤掉的key
      */
     private final Set<String> ignoreReplaceSearchKeys = new HashSet<>();
+
+    /**
+     * 覆盖替换的关键词映射
+     */
+    private Map<String, String> overrideMappings = new HashMap<>();
+
 
     public SearchableLocationReplacer(Map<String, PZTranslation> mergedTranslateMap) {
         //找到所有地点封装到Map
@@ -44,19 +54,23 @@ public class SearchableLocationReplacer {
                 localtionMap.put(entry.getValue().getTranslation(), entry.getValue().getOriginal());
             }
         }
-        //读取过滤文件
-        Path sourcePath = Paths.get(IGNORE_FILE_NAME);
-        if (Files.exists(sourcePath)) {
-            try {
-                for (String ignoreKey : Files.readAllLines(sourcePath)) {
-                    if (!ignoreKey.isBlank()) {
-                        ignoreReplaceSearchKeys.add(ignoreKey.strip());
-                    }
-                }
-            } catch (IOException e) {
-                logger.warn("读取" + IGNORE_FILE_NAME + "异常，替换搜索文本时将不会过滤任何关键词", e);
+        //读取配置文件
+        Yaml yaml = new Yaml();
+        try (FileInputStream inputStream = new FileInputStream(CONFIG_FILE_NAME)) {
+            // 解析YAML文件为Map
+            SearchableLocationReplaceConfig config = yaml.loadAs(inputStream, SearchableLocationReplaceConfig.class);
+            if (Objects.nonNull(config.getIgnoreKeys())) {
+                ignoreReplaceSearchKeys.addAll(config.getIgnoreKeys());
             }
+            //配置文件中的映射覆盖原有映射
+            if (Objects.nonNull(config.getOverrideMappings())) {
+                localtionMap.putAll(config.getOverrideMappings());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
+
+
     }
 
     /**
