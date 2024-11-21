@@ -55,7 +55,7 @@ public class HalfTranslationProcessor extends CommonTranslationProcessor {
     @Override
     protected boolean shouldPublish(FileVersion lastFileVersion) {
         if (!FileVersion.Profile.LIVE.equals(GlobalConfig.SW_PROFILE)){
-            logger.info("最新版本为[{}]，不发布半汉化版本", lastFileVersion.getProfile());
+            logger.info("推送通道为[{}]，不发布半汉化版本", GlobalConfig.SW_PROFILE.name());
             return false;
         }
         return true;

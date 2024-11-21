@@ -3,6 +3,7 @@ package cn.citizenwiki.processor.translation;
 
 import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.s3.S3Config;
+import cn.citizenwiki.config.GlobalConfig;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.utils.SearchableLocationReplacer;
@@ -42,8 +43,8 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
      */
     @Override
     protected String getBucketPath(FileVersion lastFileVersion) {
-        if (FileVersion.Profile.PTU.name().equals(lastFileVersion.getProfile())) {
-            logger.info("最新版本为PTU，全汉化版本将上传至CDN的[{}]目录", S3Config.PTU_DIR);
+        if (FileVersion.Profile.PTU.equals(GlobalConfig.SW_PROFILE)) {
+            logger.info("发布通道：[{}]，全汉化版本将上传至CDN的[{}]目录", GlobalConfig.SW_PROFILE.name(), S3Config.PTU_DIR);
             return S3Config.PTU_DIR + "/global.ini";
         } else {
             return S3Config.FULL_DIR + "/global.ini";
