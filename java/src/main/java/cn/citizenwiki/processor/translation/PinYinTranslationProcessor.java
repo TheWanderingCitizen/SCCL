@@ -52,6 +52,7 @@ public class PinYinTranslationProcessor extends CommonTranslationProcessor {
             String translation = pzTranslation.getTranslation();
             if (pzTranslation.getKey().startsWith("item_Name") || SearchableLocationReplacer.isLocationKey(pzTranslation.getKey())){
                 String pinyin = PinYinUtil.convertToPinyin(translation);
+                logger.info(pzTranslation.getKey() + pinyin);
                 if (Objects.nonNull(pinyin) && !pinyin.isBlank()) {
                     //将汉字转拼音，只保留拼音首字母
                     String[] pinyinArray = pinyin.split(PinYinUtil.SEPARETOR);
@@ -62,6 +63,7 @@ public class PinYinTranslationProcessor extends CommonTranslationProcessor {
                     translation += "[" + firstLetterBuilder.toString() + "]";
                 }
             }
+            logger.info(pzTranslation.getKey() + translation);
             try {
                 bw.write(pzTranslation.getKey() + "=" + translation);
                 bw.newLine(); // 写入换行符
