@@ -16,6 +16,8 @@ public class GithubConfig {
     public static final String FULL_BRANCH_NAME = "main";
     //英语分支名
     public static final String EN_BRANCH_NAME = "en";
+    //拼音分支名
+    public static final String PINYIN_BRANCH_NAME = "cn_pinyin";
 
     //fork仓库的名称
     private final String forkRepo;

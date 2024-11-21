@@ -34,7 +34,7 @@ public class MergeAndConvert {
     private final ParatranzApi paratranzApi = ParatranzApi.INSTANCE;
     //词条处理器
     private final TranslationProcessor[] translationProcessors =
-            new TranslationProcessor[]{new FullTranslationProcessor(), new HalfTranslationProcessor(), new BothTranslationProcessor()};
+            new TranslationProcessor[]{new FullTranslationProcessor(), new HalfTranslationProcessor(), new BothTranslationProcessor(), new PinYinTranslationProcessor()};
 
     private final S3Api s3Api = S3Api.INSTANCE;
 

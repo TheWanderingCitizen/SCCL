@@ -108,7 +108,7 @@ public class SearchableLocationReplacer {
      * @param key
      * @return
      */
-    private static boolean isLocationKey(String key) {
+    public static boolean isLocationKey(String key) {
         return (key.startsWith("Pyro") && !key.contains("_desc") && !key.contains("_add") && !key.contains("drlct"))
                 || (key.startsWith("Stanton") && !key.contains("_desc") && !key.contains("_add"));
     }

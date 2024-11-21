@@ -11,6 +11,7 @@ public class S3Config {
     public static final String FULL_DIR = "full";
     public static final String HALF_DIR = "half";
     public static final String PTU_DIR = "ptu";
+    public static final String PINYIN_DIR = "pinyin";
     public static final String ORGINAL_DIR = "orginal";
     private final String accessKey;
     private final String secretKey;
