@@ -109,7 +109,8 @@ public class SearchableLocationReplacer {
      * @return
      */
     public static boolean isLocationKey(String key) {
-        return (key.startsWith("Pyro") && !key.contains("_desc") && !key.contains("_add") && !key.contains("drlct"))
-                || (key.startsWith("Stanton") && !key.contains("_desc") && !key.contains("_add"));
+        key = key.toLowerCase();
+        return (key.startsWith("pyro") && !key.contains("_desc") && !key.contains("_add") && !key.contains("drlct"))
+                || (key.startsWith("stanton") && !key.contains("_desc") && !key.contains("_add"));
     }
 }
