@@ -50,11 +50,11 @@ public class PinYinTranslationProcessor extends CommonTranslationProcessor {
         //写入文件
         if (bw != null) {
             String translation = pzTranslation.getTranslation();
-            if (pzTranslation.getKey().startsWith("item_Name") || SearchableLocationReplacer.isLocationKey(pzTranslation.getKey())) {
+            if (pzTranslation.getKey().toLowerCase().startsWith("item_name") || SearchableLocationReplacer.isLocationKey(pzTranslation.getKey())) {
                 translation = translation + "[" + PinYinUtil.getPinyin(translation) + "]";
             }
             try {
-                bw.write(pzTranslation.getKey() + "=" + translation);
+                bw.write(String.join("=", pzTranslation.getKey(), translation));
                 bw.newLine(); // 写入换行符
             } catch (IOException e) {
                 throw new RuntimeException(e);
