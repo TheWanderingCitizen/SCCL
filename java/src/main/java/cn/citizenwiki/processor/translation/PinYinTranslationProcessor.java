@@ -50,20 +50,9 @@ public class PinYinTranslationProcessor extends CommonTranslationProcessor {
         //写入文件
         if (bw != null) {
             String translation = pzTranslation.getTranslation();
-            if (pzTranslation.getKey().startsWith("item_Name") || SearchableLocationReplacer.isLocationKey(pzTranslation.getKey())){
-                String pinyin = PinYinUtil.convertToPinyin(translation);
-                logger.info(pzTranslation.getKey() + pinyin);
-                if (Objects.nonNull(pinyin) && !pinyin.isBlank()) {
-                    //将汉字转拼音，只保留拼音首字母
-                    String[] pinyinArray = pinyin.split(PinYinUtil.SEPARETOR);
-                    StringBuilder firstLetterBuilder = new StringBuilder();
-                    for (int i = 0; i < pinyinArray.length; i++) {
-                        firstLetterBuilder.append(pinyinArray[i].charAt(0));
-                    }
-                    translation += "[" + firstLetterBuilder.toString() + "]";
-                }
+            if (pzTranslation.getKey().startsWith("item_Name") || SearchableLocationReplacer.isLocationKey(pzTranslation.getKey())) {
+                translation = translation + "[" + PinYinUtil.getPinyin(translation) + "]";
             }
-            logger.info(pzTranslation.getKey() + translation);
             try {
                 bw.write(pzTranslation.getKey() + "=" + translation);
                 bw.newLine(); // 写入换行符
