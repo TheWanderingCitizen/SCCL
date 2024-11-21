@@ -3,6 +3,8 @@ package cn.citizenwiki.model.dto;
 import cn.citizenwiki.model.dto.paratranz.response.PZFile;
 import cn.citizenwiki.utils.ParatranzFileUtil;
 
+import java.util.Objects;
+
 /**
  * 3.24.4 PTU 98767232
  */
@@ -35,9 +37,9 @@ public class FileVersion implements Comparable<FileVersion> {
         }
     }
 
-    public enum Profile{
+    public enum Profile {
         PTU,
-        Live,
+        LIVE,
     }
 
 
@@ -59,6 +61,16 @@ public class FileVersion implements Comparable<FileVersion> {
         int lastComparison = Integer.compare(this.last, o.last);
         if (lastComparison != 0) {
             return lastComparison;
+        }
+
+        // 如果前三部分相同，比较Profile,谁是live谁大
+        // 如果前三部分相同，比较profile，使用Objects.equals避免null
+        if (!Objects.equals(this.profile, o.profile)) {
+            if (Objects.nonNull(o.profile) && o.profile.equalsIgnoreCase(Profile.LIVE.name())) {
+                return -1;
+            } else {
+                return 1;
+            }
         }
 
         // 如果前三部分相同，比较版本号

@@ -3,6 +3,7 @@ package cn.citizenwiki.processor.translation;
 
 import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.s3.S3Config;
+import cn.citizenwiki.config.GlobalConfig;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import org.slf4j.Logger;
@@ -57,8 +58,8 @@ public class BothTranslationProcessor extends CommonTranslationProcessor {
 
     @Override
     protected boolean shouldPublish(FileVersion lastFileVersion) {
-        if (!FileVersion.Profile.Live.name().equals(lastFileVersion.getProfile())){
-            logger.info("最新版本为[{}]，不发布双语版本", lastFileVersion.getProfile());
+        if (!FileVersion.Profile.LIVE.equals(GlobalConfig.SW_PROFILE)) {
+            logger.info("推送通道为[{}]，不发布双语版本", GlobalConfig.SW_PROFILE.name());
             return false;
         }
         return true;

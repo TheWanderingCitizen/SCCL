@@ -1,5 +1,6 @@
 package cn.citizenwiki.config;
 
+import cn.citizenwiki.model.dto.FileVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +16,9 @@ public class GlobalConfig {
     //推送（push仓库，pr，cdn）的总开关，默认关闭
     public static final boolean SW_PUBLISH;
 
+    //推送版本开关，默认关闭
+    public static final FileVersion.Profile SW_PROFILE;
+
     static {
         String swPublish = System.getenv("SW_PUBLISH");
         if (Objects.nonNull(swPublish) && !swPublish.isBlank()) {
@@ -23,5 +27,12 @@ public class GlobalConfig {
             SW_PUBLISH = false;
         }
         logger.info("推送开关：[{}]", SW_PUBLISH ? "开启" : "关闭");
+        String swProfile = System.getenv("SW_PROFILE");
+        if (Objects.nonNull(swProfile) && !swProfile.isBlank()) {
+            SW_PROFILE = FileVersion.Profile.valueOf(swProfile);
+        } else {
+            SW_PROFILE = FileVersion.Profile.PTU;
+        }
+        logger.info("推送通道：[{}]", SW_PROFILE.name());
     }
 }

@@ -1,4 +1,4 @@
-name: java版发行汉化(发布)
+name: java版发行汉化(发布PTU)
 
 on:
   workflow_dispatch: # 允许手动触发
@@ -38,6 +38,7 @@ jobs:
         S3_BUCKET: ${{ secrets.S3_BUCKET }}
         S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
         SW_PUBLISH: true
+        SW_PROFILE: PTU
 
     - name: Upload INI files # 上传文件,在action页面可以下载
       uses: actions/upload-artifact@v4
