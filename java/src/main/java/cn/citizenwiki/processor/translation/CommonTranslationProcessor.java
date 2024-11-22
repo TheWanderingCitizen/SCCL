@@ -67,7 +67,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
             //同步仓库最新内容
             getLogger().info("[{}]开始fork sync[{}]分支", getProcessorName(), BRANCH_NAME);
             try {
-                GithubPulls pullRequest = githubApi.createPullRequest("fork sync", GithubConfig.INSTANCE.getTargetUsername(),
+                GithubPulls pullRequest = githubApi.createPullRequest("fork sync " + BRANCH_NAME, GithubConfig.INSTANCE.getTargetUsername(),
                         GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getForkRepo(),
                         BRANCH_NAME, "fork sync");
                 githubApi.mergePullRequest(GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getForkRepo(),
@@ -117,7 +117,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
         //向sctoolbox提交pull request
         getLogger().info("[{}]开始提交[{}]分支pull request", getProcessorName(), BRANCH_NAME);
         try {
-            githubApi.createPullRequest(lastFileVersion.getName(), GithubConfig.INSTANCE.getForkOwner(),
+            githubApi.createPullRequest(lastFileVersion.getName() +" " + BRANCH_NAME, GithubConfig.INSTANCE.getForkOwner(),
                     GithubConfig.INSTANCE.getTargetUsername(), GithubConfig.INSTANCE.getTargetRepo(),
                     BRANCH_NAME, lastFileVersion.getName());
         } catch (GithubHttpException e) {
