@@ -86,9 +86,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
             Files.createFile(filePath);
             bw = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8, StandardOpenOption.WRITE);
             //写入bom头
-            bw.write(0xEF);
-            bw.write(0xBB);
-            bw.write(0xBF);
+            bw.write('\ufeff');
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
