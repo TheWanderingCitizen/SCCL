@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -83,7 +84,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
             // 使用 Files.createFile 创建目标文件
             Files.deleteIfExists(filePath);
             Files.createFile(filePath);
-            bw = Files.newBufferedWriter(filePath, StandardOpenOption.WRITE);
+            bw = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8, StandardOpenOption.WRITE);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
