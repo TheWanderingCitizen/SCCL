@@ -51,7 +51,7 @@ public class PinYinTranslationProcessor extends CommonTranslationProcessor {
         if (bw != null) {
             String translation = pzTranslation.getTranslation();
             String key = pzTranslation.getKey();
-            if ((key.toLowerCase().startsWith("item_name") && key.indexOf('=') == (key.length() - 1))
+            if ((key.toLowerCase().startsWith("item_name") && key.indexOf('=') != (key.length() - 1))
                     || SearchableLocationReplacer.isLocationKey(key)) {
                 translation = translation + "[" + PinYinUtil.getPinyin(translation) + "]";
             }
