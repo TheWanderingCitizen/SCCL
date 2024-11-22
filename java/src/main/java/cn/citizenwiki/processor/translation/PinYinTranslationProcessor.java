@@ -53,7 +53,10 @@ public class PinYinTranslationProcessor extends CommonTranslationProcessor {
             String key = pzTranslation.getKey();
             if ((key.toLowerCase().startsWith("item_name") && key.indexOf('=') != (key.length() - 1))
                     || SearchableLocationReplacer.isLocationKey(key)) {
-                translation = translation + "[" + PinYinUtil.getPinyin(translation) + "]";
+                String pinyin = PinYinUtil.getPinyin(translation);
+                if (Objects.nonNull(pinyin)) {
+                    translation = translation + "[" + PinYinUtil.getPinyin(translation) + "]";
+                }
             }
             try {
                 bw.write(String.join("=", key, translation));

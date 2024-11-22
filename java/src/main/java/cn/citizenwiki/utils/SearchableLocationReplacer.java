@@ -9,7 +9,13 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 用于将译文中的地点文本替换为可以用英文搜索的文本（后面加“[英文原文]”）
@@ -102,6 +108,9 @@ public class SearchableLocationReplacer {
         return false;
     }
 
+    private static final Pattern PYRO = Pattern.compile("^(?i)pyro\\d*(?!.*_desc)(?!.*_add)(?!.*drlct).*");
+    private static final Pattern STANTON = Pattern.compile("^(?i)stanton\\d*(?!.*_desc)(?!.*_add).*");
+
     /**
      * 判断key是否为标准地名
      *
@@ -109,8 +118,8 @@ public class SearchableLocationReplacer {
      * @return
      */
     public static boolean isLocationKey(String key) {
-        key = key.toLowerCase();
-        return (key.startsWith("pyro") && !key.contains("_desc") && !key.contains("_add") && !key.contains("drlct"))
-                || (key.startsWith("stanton") && !key.contains("_desc") && !key.contains("_add"));
+        Matcher pyroMc = PYRO.matcher(key);
+        Matcher stantonMc = STANTON.matcher(key);
+        return pyroMc.matches() || stantonMc.matches();
     }
 }
