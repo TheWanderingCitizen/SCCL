@@ -88,22 +88,27 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
     }
 
     @Override
-    protected void publish(FileVersion lastFileVersion) {
-        super.publish(lastFileVersion);
-        //压缩汉化文件
+    protected void beforePublish() {
+        super.beforePublish();
         try {
             // 1.将汉化文件复制到指定目录
             FileUtil.copyDirectory(Paths.get(super.OUTPUT_DIR, GithubConfig.CN_DIR), COMPRESS_LOCALIZATION_DIR.resolve(GithubConfig.CN_DIR));
             // 2.压缩指定目录
             FileUtil.zipDirectory(Paths.get("data"), COMPRESS_FILE_PATH, Deflater.BEST_COMPRESSION);
-            // 3.推送到存储桶
-            String bucketPath = S3Config.ZIP_FILE_NAME;
-            getLogger().info("开始上传压缩文件至存储桶[{}]", bucketPath);
-            super.s3Api.putObject(bucketPath, Paths.get(OUTPUT_PATH));
-            getLogger().info("上传压缩文件至存储桶[{}]成功", bucketPath);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            logger.error("汉化文件压缩失败", e);
         }
+    }
+
+    @Override
+    protected void publish(FileVersion lastFileVersion) {
+        //走父类通用逻辑
+        super.publish(lastFileVersion);
+        // 推送zip压缩到存储桶
+        String bucketPath = S3Config.ZIP_FILE_NAME;
+        getLogger().info("开始上传压缩文件至存储桶[{}]", bucketPath);
+        super.s3Api.putObject(bucketPath, Paths.get(OUTPUT_PATH));
+        getLogger().info("上传压缩文件至存储桶[{}]成功", bucketPath);
 
     }
 }

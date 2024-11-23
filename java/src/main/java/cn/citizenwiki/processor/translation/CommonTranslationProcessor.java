@@ -102,10 +102,15 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
     public void afterProcess(FileVersion lastFileVersion) {
         //关闭文件流
         closeBw();
+        beforePublish();
         //发布
         if (GlobalConfig.SW_PUBLISH && shouldPublish(lastFileVersion)){
             publish(lastFileVersion);
         }
+    }
+
+    protected void beforePublish() {
+
     }
 
     protected void publish(FileVersion lastFileVersion) {
@@ -146,7 +151,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
     /**
      * 关闭输出流
      */
-    private void closeBw() {
+    protected void closeBw() {
         if (bw != null){
             try {
                 bw.flush();
