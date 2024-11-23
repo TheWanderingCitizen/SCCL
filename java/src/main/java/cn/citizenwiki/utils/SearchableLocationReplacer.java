@@ -110,6 +110,7 @@ public class SearchableLocationReplacer {
 
     private static final Pattern PYRO = Pattern.compile("^(?i)pyro\\d*(?!.*_desc)(?!.*_add)(?!.*drlct).*");
     private static final Pattern STANTON = Pattern.compile("^(?i)stanton\\d*(?!.*_desc)(?!.*_add).*");
+    private static final Pattern UI = Pattern.compile("^(?i)ui_pregame_port_.*_name");
 
     /**
      * 判断key是否为标准地名
@@ -120,6 +121,7 @@ public class SearchableLocationReplacer {
     public static boolean isLocationKey(String key) {
         Matcher pyroMc = PYRO.matcher(key);
         Matcher stantonMc = STANTON.matcher(key);
-        return pyroMc.matches() || stantonMc.matches();
+        Matcher uiMc = UI.matcher(key);
+        return pyroMc.matches() || stantonMc.matches() || uiMc.matches();
     }
 }
