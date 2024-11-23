@@ -15,7 +15,7 @@ public class MergeRequest {
     private MergeMethod mergeMethod;
 
 
-    public static enum MergeMethod{
+    public enum MergeMethod{
         merge,
         squash,
         rebase

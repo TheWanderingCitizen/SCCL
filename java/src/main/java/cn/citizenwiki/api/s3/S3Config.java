@@ -13,6 +13,7 @@ public class S3Config {
     public static final String PTU_DIR = "ptu";
     public static final String PINYIN_DIR = "pinyin";
     public static final String ORGINAL_DIR = "orginal";
+    public static final String ZIP_FILE_NAME = "data.zip";
     private final String accessKey;
     private final String secretKey;
     private final String bucketName;

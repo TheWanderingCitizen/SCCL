@@ -6,13 +6,17 @@ import cn.citizenwiki.api.s3.S3Config;
 import cn.citizenwiki.config.GlobalConfig;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
+import cn.citizenwiki.utils.FileUtil;
 import cn.citizenwiki.utils.SearchableLocationReplacer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
+import java.util.zip.Deflater;
 
 /**
  * 全汉化处理器
@@ -22,6 +26,9 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
     private static final Logger logger = LoggerFactory.getLogger(FullTranslationProcessor.class);
 
     private SearchableLocationReplacer searchableLocationReplacer;
+
+    private static final Path COMPRESS_LOCALIZATION_DIR = Paths.get("data", "Localization");
+    private final Path COMPRESS_FILE_PATH = Paths.get(GlobalConfig.OUTPUT_DIR, "data.zip");
 
     // 定义规则
 
@@ -80,4 +87,23 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
         return "汉化处理器";
     }
 
+    @Override
+    protected void publish(FileVersion lastFileVersion) {
+        super.publish(lastFileVersion);
+        //压缩汉化文件
+        try {
+            // 1.将汉化文件复制到指定目录
+            FileUtil.copyDirectory(Paths.get(super.OUTPUT_DIR, GithubConfig.CN_DIR), COMPRESS_LOCALIZATION_DIR.resolve(GithubConfig.CN_DIR));
+            // 2.压缩指定目录
+            FileUtil.zipDirectory(Paths.get("data"), COMPRESS_FILE_PATH, Deflater.BEST_COMPRESSION);
+            // 3.推送到存储桶
+            String bucketPath = S3Config.ZIP_FILE_NAME;
+            getLogger().info("开始上传压缩文件至存储桶[{}]", bucketPath);
+            super.s3Api.putObject(bucketPath, Paths.get(OUTPUT_PATH));
+            getLogger().info("上传压缩文件至存储桶[{}]成功", bucketPath);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
 }

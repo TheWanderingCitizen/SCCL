@@ -27,8 +27,9 @@ public class GithubConfig {
     private final String token ; //
 
     public static final String BASE_API_URL = "https://api.github.com";
-    public static final String CN_GLOBAL_INI_PATH = "chinese_(simplified)/global.ini";
-    public static final String EN_GLOBAL_INI_PATH = "english/global.ini";
+    //汉化文件夹名称
+    public static final String CN_DIR = "chinese_(simplified)";
+    public static final String CN_GLOBAL_INI_PATH = CN_DIR + "/global.ini";
     //fork仓库的用户名
     private final String forkOwner;
     //目标仓库用户名

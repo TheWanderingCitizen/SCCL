@@ -37,24 +37,24 @@ import java.util.Objects;
 public abstract class CommonTranslationProcessor implements TranslationProcessor {
 
     //github对应版本分支
-    private final String BRANCH_NAME;
+    protected final String BRANCH_NAME;
     //文件输出的本地目录
-    private final String OUTPUT_DIR;
+    protected final String OUTPUT_DIR;
     //输出文件路径
-    private final String OUTPUT_PATH;
+    protected final String OUTPUT_PATH;
     //要拉去以及提交的git仓库url（非scbox）
-    private final String GIT_REMOTE;
+    protected final String GIT_REMOTE;
     //输出文件的outputstream
     private BufferedWriter bw;
     //jgit,用于拉取推送代码
     private Git git;
     private final GithubApi githubApi = GithubApi.INSTANCE;
-    private final S3Api s3Api = S3Api.INSTANCE;
+    protected final S3Api s3Api = S3Api.INSTANCE;
 
-    public CommonTranslationProcessor(String BRANCH_NAME) {
-        this.BRANCH_NAME = BRANCH_NAME;
-        this.OUTPUT_DIR = GlobalConfig.OUTPUT_DIR + "/" + this.BRANCH_NAME;
-        this.OUTPUT_PATH = OUTPUT_DIR + "/" + GithubConfig.CN_GLOBAL_INI_PATH;
+    public CommonTranslationProcessor(String branchName) {
+        this.BRANCH_NAME = branchName;
+        this.OUTPUT_DIR = Paths.get(GlobalConfig.OUTPUT_DIR, this.BRANCH_NAME).toString();
+        this.OUTPUT_PATH =  Paths.get(OUTPUT_DIR, GithubConfig.CN_GLOBAL_INI_PATH).toString();
         this.GIT_REMOTE = "https://github.com/" + GithubConfig.INSTANCE.getForkOwner() + "/" + GithubConfig.INSTANCE.getForkRepo();
     }
 
@@ -108,7 +108,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
         }
     }
 
-    private void publish(FileVersion lastFileVersion) {
+    protected void publish(FileVersion lastFileVersion) {
         //提交并推送到fork仓库
         gitCommitAndPush(lastFileVersion);
         git.close();
