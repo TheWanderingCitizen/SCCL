@@ -93,7 +93,7 @@ public class GithubApi extends BaseApi {
         }
         HttpRequest request = authJsonRequestBuilder()
                 .uri(URI.create(url))
-                .POST(BodyPublishers.ofString(jsonBody))
+                .PUT(BodyPublishers.ofString(jsonBody))
                 .build();
         return sendRequestOfJsonResp(request, GithubJacksonTools.MERGE_PR);
     }
