@@ -70,8 +70,9 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
                 GithubPulls pullRequest = githubApi.createPullRequest("fork sync " + BRANCH_NAME, GithubConfig.INSTANCE.getTargetUsername(),
                         GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getForkRepo(),
                         BRANCH_NAME, "fork sync");
+                getLogger().info("fork sync pr [{}]", pullRequest.getNumber());
                 githubApi.mergePullRequest(GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getForkRepo(),
-                        pullRequest.getNumber(),"fork sync", "fork sync", MergeRequest.MergeMethod.rebase);
+                        pullRequest.getNumber(),"fork sync " + BRANCH_NAME, "fork sync", MergeRequest.MergeMethod.rebase);
             } catch (GithubHttpException e) {
                 if (Objects.nonNull(e.getGitHubErrorResponse()) && "422".equals(e.getGitHubErrorResponse().getStatus())){
                     getLogger().info("[{}]无需fork sync[{}]分支，详情：{}", getProcessorName(), BRANCH_NAME, e.getGitHubErrorResponse());
