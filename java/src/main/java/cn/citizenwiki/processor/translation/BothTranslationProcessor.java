@@ -6,6 +6,7 @@ import cn.citizenwiki.api.s3.S3Config;
 import cn.citizenwiki.config.GlobalConfig;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
+import cn.citizenwiki.utils.SearchableLocationReplacer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +21,9 @@ import java.util.regex.Pattern;
 public class BothTranslationProcessor extends CommonTranslationProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(BothTranslationProcessor.class);
+
+    private static final Pattern itemPattern1 = Pattern.compile("^item_Name.*S\\d{2}.*$");
+    private static final Pattern itemPattern2 = Pattern.compile("^item.*S\\d.*$");
 
     // 定义规则
 
@@ -38,7 +42,7 @@ public class BothTranslationProcessor extends CommonTranslationProcessor {
         String value = pzTranslation.getTranslation();
         if (HalfTranslationProcessor.needProcess(pzTranslation) && !value.contains("[")) {
             // 使用正则表达式
-            boolean matches = Pattern.matches("^item_Name.*S\\d{2}.*$", key) || Pattern.matches("^item.*S\\d.*$", key);
+            boolean matches = itemPattern1.matcher(key).matches() || itemPattern2.matcher(key).matches() || SearchableLocationReplacer.isLocationKey(key);
             if ((key.contains("Stanton") && key.contains("_")) || key.contains("mission_location") || key.contains("mission_contractor") || matches) {
                 value = pzTranslation.getOriginal() + " [" + pzTranslation.getTranslation() + "]";
             } else {
