@@ -107,6 +107,7 @@ public class SearchableLocationReplacer {
     private static final Pattern PYRO = Pattern.compile("^(?i)pyro\\d*(?!.*_desc)(?!.*_add)(?!.*drlct).*");
     private static final Pattern STANTON = Pattern.compile("^(?i)stanton\\d*(?!.*_desc)(?!.*_add).*");
     private static final Pattern UI = Pattern.compile("^(?i)ui_pregame_port_.*_name");
+    private static final Pattern RR = Pattern.compile("^(?i)RR_.*_L[0-9]+(?:(?!_desc).)*$");
 
     /**
      * 判断key是否为标准地名
@@ -118,6 +119,7 @@ public class SearchableLocationReplacer {
         Matcher pyroMc = PYRO.matcher(key);
         Matcher stantonMc = STANTON.matcher(key);
         Matcher uiMc = UI.matcher(key);
-        return pyroMc.matches() || stantonMc.matches() || uiMc.matches();
+        Matcher rRMc = RR.matcher(key);
+        return pyroMc.matches() || stantonMc.matches() || uiMc.matches() || rRMc.matches();
     }
 }
