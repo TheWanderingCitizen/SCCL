@@ -45,7 +45,9 @@ public class HalfTranslationProcessor extends CommonTranslationProcessor {
         if (bw != null) {
             try {
                 bw.write(pzTranslation.getKey() + "=" + value);
-                bw.newLine(); // 写入换行符
+                if (!value.endsWith("\r") && !value.endsWith("\n")) {
+                    bw.newLine();
+                }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

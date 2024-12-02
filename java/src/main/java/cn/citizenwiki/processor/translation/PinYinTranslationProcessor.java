@@ -62,7 +62,9 @@ public class PinYinTranslationProcessor extends CommonTranslationProcessor {
             }
             try {
                 bw.write(String.join("=", key, translation));
-                bw.newLine(); // 写入换行符
+                if (!translation.endsWith("\r") && !translation.endsWith("\n")) {
+                    bw.newLine();
+                }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

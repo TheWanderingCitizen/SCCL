@@ -65,7 +65,9 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
             String translation = searchableLocationReplacer.replace(pzTranslation);
             try {
                 bw.write(pzTranslation.getKey() + "=" + translation);
-                bw.newLine(); // 写入换行符
+                if (!translation.endsWith("\r") && !translation.endsWith("\n")) {
+                    bw.newLine();
+                }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
