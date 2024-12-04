@@ -11,8 +11,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.source>23</maven.compiler.source>
+        <maven.compiler.target>23</maven.compiler.target>
         <jackson.version>2.18.1</jackson.version>
         <jgit.version>7.0.0.202409031743-r</jgit.version>
         <slf4j.version>1.7.36</slf4j.version>
