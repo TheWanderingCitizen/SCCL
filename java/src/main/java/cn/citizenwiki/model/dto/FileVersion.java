@@ -3,6 +3,7 @@ package cn.citizenwiki.model.dto;
 import cn.citizenwiki.model.dto.paratranz.response.PZFile;
 import cn.citizenwiki.utils.ParatranzFileUtil;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
@@ -16,7 +17,7 @@ public class FileVersion implements Comparable<FileVersion> {
     private long version;// 98767232
     private long id;
     //PTU PU还是其它
-    private String profile;// PTU
+    private Profile profile;// PTU
     private String name; // 3.24.4 PTU 98767232
 
     public FileVersion(PZFile pzFile) {
@@ -29,19 +30,29 @@ public class FileVersion implements Comparable<FileVersion> {
             String subVersion = substringUntilFirstNonDigit(nameArray[2]);
             this.first = Integer.parseInt(scVersionArray[0]);
             this.middle = Integer.parseInt(scVersionArray[1]);
-            this.last = Integer.parseInt(scVersionArray[2]);
+            if (scVersionArray.length > 2) {
+                this.last = Integer.parseInt(scVersionArray[2]);
+            }
             this.version = Long.parseLong(subVersion);
-            this.profile = scProfile;
+            try {
+                this.profile = Profile.valueOf(scProfile.strip().toUpperCase());
+            }catch (Exception e) {
+                //如果不合法，则默认为最低版本
+                this.profile = Profile.values()[0];
+            }
             this.id = pzFile.getId();
             this.name = realFileName.substring(0, realFileName.lastIndexOf("."));
         }
     }
 
+    /**
+     * 枚举顺序代表版本新旧顺序，不可随意变换顺序，越往下越新
+     */
     public enum Profile {
+        EPTU,
         PTU,
         LIVE,
     }
-
 
     @Override
     public int compareTo(FileVersion o) {
@@ -63,14 +74,10 @@ public class FileVersion implements Comparable<FileVersion> {
             return lastComparison;
         }
 
-        // 如果前三部分相同，比较Profile,谁是live谁大
-        // 如果前三部分相同，比较profile，使用Objects.equals避免null
-        if (!Objects.equals(this.profile, o.profile)) {
-            if (Objects.nonNull(o.profile) && o.profile.equalsIgnoreCase(Profile.LIVE.name())) {
-                return -1;
-            } else {
-                return 1;
-            }
+        //比较PROFILE
+        int lastProfile = Integer.compare(this.profile.ordinal(), o.profile.ordinal());
+        if (lastProfile != 0) {
+            return lastProfile;
         }
 
         // 如果前三部分相同，比较版本号
@@ -121,7 +128,7 @@ public class FileVersion implements Comparable<FileVersion> {
         return id;
     }
 
-    public String getProfile() {
+    public Profile getProfile() {
         return profile;
     }
 
