@@ -64,10 +64,10 @@ public class BothTranslationProcessor extends CommonTranslationProcessor {
 
     @Override
     protected boolean shouldPublish(FileVersion lastFileVersion) {
-        if (!FileVersion.Profile.LIVE.equals(GlobalConfig.SW_PROFILE)) {
-            logger.info("推送通道为[{}]，不发布双语版本", GlobalConfig.SW_PROFILE.name());
-            return false;
-        }
+//        if (!FileVersion.Profile.LIVE.equals(GlobalConfig.SW_PROFILE)) {
+//            logger.info("推送通道为[{}]，不发布双语版本", GlobalConfig.SW_PROFILE.name());
+//            return false;
+//        }
         return true;
     }
 
