@@ -62,6 +62,10 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
     public void processBw(PZTranslation pzTranslation, BufferedWriter bw) {
         //写入文件
         if (bw != null) {
+            if(SearchableLocationReplacer.isLocationKey(pzTranslation.getKey())){
+                String translation = pzTranslation.getTranslation();
+                pzTranslation.setTranslation(translation.replace(translation, translation + "[" + pzTranslation.getOriginal() + "]"));
+            }
             String translation = searchableLocationReplacer.replace(pzTranslation);
             try {
                 bw.write(pzTranslation.getKey() + "=" + translation);
