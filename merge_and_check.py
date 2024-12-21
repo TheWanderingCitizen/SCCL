@@ -25,7 +25,7 @@ def check_mission_consistency(data):
     """Check for consistency in ~key(Value) format, percentages, and sequential numbers (including negatives)."""
     inconsistencies = []
     pattern_key_value = re.compile(r"~(\w+)\((.*?)\)")
-    pattern_number_with_colon_newline = re.compile(r"[:：]\s*(-?\d+)\s*(?:\\n|$)")
+    pattern_number_with_colon_newline = re.compile(r"[:：]\s*(-?\d+)\s*(?:\n|$)")
     pattern_percentage = re.compile(r"\d+%")
 
     for entry in data:
@@ -65,8 +65,14 @@ def check_mission_consistency(data):
         original_percentages = pattern_percentage.findall(original)
         translation_percentages = pattern_percentage.findall(translation)
 
+        # Allow "百分百" and "完全" as valid substitutions for "100%"
+        if any(keyword in entry.get('translation', '') for keyword in ["百分百", "完全"]):
+            translation_percentages = [p if p != "100%" else "100%" for p in translation_percentages]
+            if "100%" not in translation_percentages:
+                translation_percentages.append("100%")
+
         # Ignore extra percentages in translation
-        filtered_translation_percentages = [p for p in translation_percentages if p in original_percentages]
+        filtered_translation_percentages = [p for p in original_percentages if p in translation_percentages]
 
         if sorted(original_percentages) != sorted(filtered_translation_percentages):
             percentage_mismatches = {
@@ -89,7 +95,6 @@ def check_mission_consistency(data):
             })
 
     return inconsistencies
-
 
 def main():
     url_checkfiles = "https://paratranz.cn/api/projects/8340/files"
