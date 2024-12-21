@@ -26,7 +26,7 @@ jobs:
       - name: Merge and Check JSON Data
         env:
           URL_CHECKFILES: "https://paratranz.cn/api/projects/8340/files"
-          AUTHORIZATION: ""
+          AUTHORIZATION: ${{ secrets.AUTHORIZATION }}
         run: |
           python merge_and_check.py
 
