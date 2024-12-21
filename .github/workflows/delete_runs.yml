@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
   contents: read
 
 jobs:
@@ -14,7 +13,7 @@ jobs:
     steps:
       - name: Delete Workflow Runs Logs
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAT: ${{ secrets.PAT }}
         run: |
           #!/bin/bash
 
@@ -25,7 +24,7 @@ jobs:
           # List workflow runs and delete logs
           while :; do
             # Fetch workflow runs
-            RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            RESPONSE=$(curl -s -H "Authorization: Bearer $PAT" \
                               "https://api.github.com/repos/$REPO/actions/runs?per_page=100")
 
             # Extract run IDs
@@ -39,7 +38,7 @@ jobs:
             # Delete logs for each run
             for RUN_ID in $RUN_IDS; do
               echo "Deleting logs for workflow run ID: $RUN_ID"
-              curl -s -X DELETE -H "Authorization: Bearer $GITHUB_TOKEN" \
+              curl -s -X DELETE -H "Authorization: Bearer $PAT" \
                    "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/logs"
             done
           done
