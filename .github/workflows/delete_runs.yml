@@ -1,4 +1,4 @@
-name: 释放WorkFlow空间
+name: Delete All Workflow Runs
 
 on:
   workflow_dispatch:
@@ -14,14 +14,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18' # 更新为符合要求的版本
 
       - name: Delete Workflow Runs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Install required package
-          npm install -g @octokit/rest
+          npm install @octokit/rest
 
           # JavaScript script to delete workflow runs
           node <<EOF
@@ -31,18 +31,17 @@ jobs:
             auth: process.env.GITHUB_TOKEN,
           });
 
-          const owner = process.env.GITHUB_REPOSITORY.split('/')[0];
-          const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
+          const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
 
           (async () => {
             try {
-              const runs = await octokit.rest.actions.listWorkflowRunsForRepo({
+              const { data: { workflow_runs } } = await octokit.rest.actions.listWorkflowRunsForRepo({
                 owner,
                 repo,
                 per_page: 100,
               });
 
-              for (const run of runs.data.workflow_runs) {
+              for (const run of workflow_runs) {
                 console.log(`Deleting workflow run: ${run.id}`);
                 await octokit.rest.actions.deleteWorkflowRun({
                   owner,
@@ -52,7 +51,7 @@ jobs:
               }
               console.log('All workflow runs deleted successfully.');
             } catch (error) {
-              console.error('Error deleting workflow runs:', error);
+              console.error('Error deleting workflow runs:', error.message);
             }
           })();
           EOF
