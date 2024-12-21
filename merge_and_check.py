@@ -22,31 +22,74 @@ def save_to_json(data, output_file_path):
         json.dump(data, json_file, ensure_ascii=False, indent=4)
 
 def check_mission_consistency(data):
-    """Check for consistency in ~key(Value) format between original and translation."""
+    """Check for consistency in ~key(Value) format, percentages, and sequential numbers (including negatives)."""
     inconsistencies = []
-    pattern = re.compile(r"~(\w+)\((.*?)\)")
+    pattern_key_value = re.compile(r"~(\w+)\((.*?)\)")
+    pattern_number_with_colon_newline = re.compile(r"[:：]\s*(-?\d+)\s*(?:\\n|$)")
+    pattern_percentage = re.compile(r"\d+%")
 
     for entry in data:
-        original = entry.get('original', '')
-        translation = entry.get('translation', '')
+        original = entry.get('original', '').replace(' ', '')
+        translation = entry.get('translation', '').replace(' ', '')
 
-        original_matches = pattern.findall(original)
-        translation_matches = pattern.findall(translation)
+        # Check ~key(Value) consistency
+        original_matches = pattern_key_value.findall(original)
+        translation_matches = pattern_key_value.findall(translation)
 
         if sorted(original_matches) != sorted(translation_matches):
             original_mismatches = [match for match in original_matches if match not in translation_matches]
             translation_mismatches = [match for match in translation_matches if match not in original_matches]
+        else:
+            original_mismatches = []
+            translation_mismatches = []
 
-            if original_mismatches or translation_mismatches:
-                inconsistencies.append({
-                    'key': entry.get('key'),
-                    'original': original,
-                    'translation': translation,
-                    'original_mismatches': original_mismatches,
-                    'translation_mismatches': translation_mismatches
-                })
+        # Check numeric consistency for numbers preceded by ':' or '：'
+        original_numbers = [match for match in pattern_number_with_colon_newline.findall(original)]
+        if original_numbers:  # Only check if original_numbers is not empty
+            translation_numbers = [match for match in pattern_number_with_colon_newline.findall(translation)]
+
+            original_values = [int(match) for match in original_numbers]
+            translation_values = [int(match) for match in translation_numbers]
+
+            if original_values != translation_values:
+                number_mismatches = {
+                    'original_numbers': original_numbers,
+                    'translation_numbers': translation_numbers
+                }
+            else:
+                number_mismatches = {}
+        else:
+            number_mismatches = {}
+
+        # Check percentage consistency
+        original_percentages = pattern_percentage.findall(original)
+        translation_percentages = pattern_percentage.findall(translation)
+
+        # Ignore extra percentages in translation
+        filtered_translation_percentages = [p for p in translation_percentages if p in original_percentages]
+
+        if sorted(original_percentages) != sorted(filtered_translation_percentages):
+            percentage_mismatches = {
+                'original_percentages': original_percentages,
+                'translation_percentages': translation_percentages
+            }
+        else:
+            percentage_mismatches = {}
+
+        # Record inconsistencies if any mismatches are found
+        if original_mismatches or translation_mismatches or number_mismatches or percentage_mismatches:
+            inconsistencies.append({
+                'key': entry.get('key'),
+                'original': entry.get('original', ''),
+                'translation': entry.get('translation', ''),
+                'original_mismatches': original_mismatches,
+                'translation_mismatches': translation_mismatches,
+                'number_mismatches': number_mismatches,
+                'percentage_mismatches': percentage_mismatches
+            })
 
     return inconsistencies
+
 
 def main():
     url_checkfiles = "https://paratranz.cn/api/projects/8340/files"
