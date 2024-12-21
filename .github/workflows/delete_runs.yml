@@ -1,4 +1,4 @@
-name: 删除Workflow Run记录，释放空间
+name: Delete All Workflow Runs Logs
 
 on:
   workflow_dispatch:
@@ -24,23 +24,34 @@ jobs:
           # List workflow runs and delete logs
           while :; do
             # Fetch workflow runs
+            echo "Fetching workflow runs..."
             RESPONSE=$(curl -s -H "Authorization: Bearer $PAT" \
                               "https://api.github.com/repos/$REPO/actions/runs?per_page=100")
+
+            echo "API Response: $RESPONSE"  # Debugging: log the full API response
 
             # Extract run IDs
             RUN_IDS=$(echo "$RESPONSE" | jq -r '.workflow_runs[].id')
 
             if [ -z "$RUN_IDS" ]; then
-              echo "No more workflow runs found."
+              echo "No workflow runs found."
               break
             fi
 
+            echo "Workflow Run IDs: $RUN_IDS"  # Debugging: log extracted run IDs
+
             # Delete logs for each run
             for RUN_ID in $RUN_IDS; do
-              echo "Deleting logs for workflow run ID: $RUN_ID"
-              curl -s -X DELETE -H "Authorization: Bearer $PAT" \
-                   "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/logs"
+              echo "Attempting to delete logs for workflow run ID: $RUN_ID"
+              DELETE_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE -H "Authorization: Bearer $PAT" \
+                   "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/logs")
+
+              if [ "$DELETE_RESPONSE" -eq 204 ]; then
+                echo "Successfully deleted logs for workflow run ID: $RUN_ID"
+              else
+                echo "Failed to delete logs for workflow run ID: $RUN_ID. Response code: $DELETE_RESPONSE"
+              fi
             done
           done
 
-          echo "All workflow run logs deleted successfully."
+          echo "Workflow run log deletion process completed."
