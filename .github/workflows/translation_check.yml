@@ -28,7 +28,7 @@ jobs:
           URL_CHECKFILES: "https://paratranz.cn/api/projects/8340/files"
           AUTHORIZATION: ${{ secrets.AUTHORIZATION }}
         run: |
-          python merge_and_check.py || exit 1
+          python merge_and_check.py
 
       - name: Evaluate Check Result
         run: |
