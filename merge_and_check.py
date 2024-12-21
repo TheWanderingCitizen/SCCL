@@ -51,7 +51,7 @@ def check_mission_consistency(data):
 def main():
     url_checkfiles = "https://paratranz.cn/api/projects/8340/files"
     headers = {
-        'Authorization': f"Bearer {os.getenv('AUTHORIZATION')}",
+        'Authorization': f"{os.getenv('AUTHORIZATION')}",
     }
 
     json_data_lists = []
