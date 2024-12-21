@@ -52,7 +52,6 @@ def main():
     url_checkfiles = "https://paratranz.cn/api/projects/8340/files"
     headers = {
         'Authorization': f"Bearer {os.getenv('AUTHORIZATION')}",
-        'Cookie': os.getenv('COOKIE')
     }
 
     json_data_lists = []
