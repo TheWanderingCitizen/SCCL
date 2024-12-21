@@ -14,7 +14,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18' # 更新为符合要求的版本
+          node-version: '18'
 
       - name: Delete Workflow Runs
         env:
@@ -25,13 +25,13 @@ jobs:
 
           # JavaScript script to delete workflow runs
           node <<EOF
-          const { Octokit } = require('@octokit/rest');
+          import { Octokit } from "@octokit/rest";
 
           const octokit = new Octokit({
             auth: process.env.GITHUB_TOKEN,
           });
 
-          const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+          const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
 
           (async () => {
             try {
@@ -49,9 +49,9 @@ jobs:
                   run_id: run.id,
                 });
               }
-              console.log('All workflow runs deleted successfully.');
+              console.log("All workflow runs deleted successfully.");
             } catch (error) {
-              console.error('Error deleting workflow runs:', error.message);
+              console.error("Error deleting workflow runs:", error.message);
             }
           })();
           EOF
