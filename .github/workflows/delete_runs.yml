@@ -19,15 +19,9 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Delete Workflow Runs Logs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Write Script to File
         run: |
-          # Install required package
-          npm install @octokit/rest
-
-          # JavaScript script to delete workflow run logs
-          node <<EOF
+          cat <<EOF > delete-workflow-logs.mjs
           import { Octokit } from "@octokit/rest";
 
           const octokit = new Octokit({
@@ -63,3 +57,11 @@ jobs:
             }
           })();
           EOF
+
+      - name: Install Dependencies
+        run: npm install @octokit/rest
+
+      - name: Execute Script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node delete-workflow-logs.mjs
