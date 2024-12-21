@@ -85,6 +85,7 @@ def main():
             print("-" * 40)
 
         save_to_json(filtered_inconsistencies, 'inconsistencies.json')
+        print("不一致的结果已保存到 inconsistencies.json 文件。")
     else:
         print("所有格式内容一致，无不一致项。")
 
