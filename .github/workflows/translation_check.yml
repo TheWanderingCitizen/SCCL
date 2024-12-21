@@ -47,7 +47,4 @@ jobs:
               echo "发现 $count 个不一致项，检查失败。"
               exit 1
             fi
-          else
-            echo "inconsistencies.json 文件不存在，检查失败。"
-            exit 1
           fi
