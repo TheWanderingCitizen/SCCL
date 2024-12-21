@@ -1,7 +1,10 @@
-name: Delete All Workflow Runs
+name: Delete All Workflow Runs Logs
 
 on:
   workflow_dispatch:
+
+permissions:
+  actions: write
 
 jobs:
   delete-workflow-runs:
@@ -16,9 +19,15 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Write Delete Script
+      - name: Delete Workflow Runs Logs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cat <<EOF > delete-workflow-runs.mjs
+          # Install required package
+          npm install @octokit/rest
+
+          # JavaScript script to delete workflow run logs
+          node <<EOF
           import { Octokit } from "@octokit/rest";
 
           const octokit = new Octokit({
@@ -35,25 +44,22 @@ jobs:
                 per_page: 100,
               });
 
+              if (workflow_runs.length === 0) {
+                console.log("No workflow runs found.");
+                return;
+              }
+
               for (const run of workflow_runs) {
-                console.log(\`Deleting workflow run: \${run.id}\`);
-                await octokit.rest.actions.deleteWorkflowRun({
+                console.log(`Deleting logs for workflow run: ${run.id}`);
+                await octokit.rest.actions.deleteWorkflowRunLogs({
                   owner,
                   repo,
                   run_id: run.id,
                 });
               }
-              console.log("All workflow runs deleted successfully.");
+              console.log("All workflow run logs deleted successfully.");
             } catch (error) {
-              console.error("Error deleting workflow runs:", error.message);
+              console.error("Error deleting workflow run logs:", error.message);
             }
           })();
           EOF
-
-      - name: Install Dependencies
-        run: npm install @octokit/rest
-
-      - name: Execute Delete Script
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node delete-workflow-runs.mjs
