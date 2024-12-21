@@ -1,0 +1,39 @@
+name: Merge and Check JSON Data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  merge-and-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Merge and Check JSON Data
+        env:
+          URL_CHECKFILES: "https://paratranz.cn/api/projects/8340/files"
+          AUTHORIZATION: ""
+        run: |
+          python merge_and_check.py
+
+      - name: Upload merged and inconsistencies data
+        uses: actions/upload-artifact@v3
+        with:
+          name: json-data
+          path: |
+            merged_data.json
+            inconsistencies.json
