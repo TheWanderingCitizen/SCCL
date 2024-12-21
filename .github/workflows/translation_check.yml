@@ -30,6 +30,14 @@ jobs:
         run: |
           python merge_and_check.py
 
+      - name: Upload merged and inconsistencies data
+        uses: actions/upload-artifact@v3
+        with:
+          name: json-data
+          path: |
+            merged_data.json
+            inconsistencies.json
+
       - name: Evaluate Check Result
         run: |
           if [ -f inconsistencies.json ]; then
@@ -44,11 +52,3 @@ jobs:
             echo "inconsistencies.json 文件不存在，检查失败。"
             exit 1
           fi
-
-      - name: Upload merged and inconsistencies data
-        uses: actions/upload-artifact@v3
-        with:
-          name: json-data
-          path: |
-            merged_data.json
-            inconsistencies.json
