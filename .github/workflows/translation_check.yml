@@ -35,7 +35,6 @@ jobs:
         with:
           name: json-data
           path: |
-            merged_data.json
             inconsistencies.json
 
       - name: Evaluate Check Result
