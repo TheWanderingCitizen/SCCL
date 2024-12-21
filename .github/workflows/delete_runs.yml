@@ -1,4 +1,4 @@
-name: Delete All Workflow Runs Logs
+name: 删除Workflow Run记录，释放空间
 
 on:
   workflow_dispatch:
