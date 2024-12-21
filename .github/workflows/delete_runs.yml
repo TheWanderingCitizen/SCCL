@@ -1,57 +1,18 @@
-name: Delete All Workflow Runs Logs
-
+name: Delete all workflow runs
 on:
-  workflow_dispatch:
-
-permissions:
-  contents: read
+  workflow_dispatch:  # 手动触发
 
 jobs:
-  delete-workflow-runs:
+  del_runs:
     runs-on: ubuntu-latest
-
+    permissions:
+      actions: write
+      contents: read
     steps:
-      - name: Delete Workflow Runs Logs
-        env:
-          PAT: ${{ secrets.PAT }}
-        run: |
-          #!/bin/bash
-
-          # Get repository owner and name
-          REPO="${GITHUB_REPOSITORY}"
-          echo "Repository: $REPO"
-
-          # List workflow runs and delete logs
-          while :; do
-            # Fetch workflow runs
-            echo "Fetching workflow runs..."
-            RESPONSE=$(curl -s -H "Authorization: Bearer $PAT" \
-                              "https://api.github.com/repos/$REPO/actions/runs?per_page=100")
-
-            echo "API Response: $RESPONSE"  # Debugging: log the full API response
-
-            # Extract run IDs
-            RUN_IDS=$(echo "$RESPONSE" | jq -r '.workflow_runs[].id')
-
-            if [ -z "$RUN_IDS" ]; then
-              echo "No workflow runs found."
-              break
-            fi
-
-            echo "Workflow Run IDs: $RUN_IDS"  # Debugging: log extracted run IDs
-
-            # Delete logs for each run
-            for RUN_ID in $RUN_IDS; do
-              echo "Attempting to delete logs for workflow run ID: $RUN_ID"
-              DELETE_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE -H "Authorization: Bearer $PAT" \
-                   "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/logs")
-
-              if [ "$DELETE_RESPONSE" -eq 204 ]; then
-                echo "Successfully deleted logs for workflow run ID: $RUN_ID"
-              else
-                echo "Failed to delete logs for workflow run ID: $RUN_ID. Response code: $DELETE_RESPONSE"
-              fi
-            done
-          done
-
-          echo "Workflow run log deletion process completed."
+      - name: Delete all workflow runs for current repo
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: 0  # 删除所有
+          keep_minimum_runs: 0  # 不保留任何记录
