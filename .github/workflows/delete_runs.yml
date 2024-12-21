@@ -11,57 +11,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Write Script to File
-        run: |
-          cat <<EOF > delete-workflow-logs.mjs
-          import { Octokit } from "@octokit/rest";
-
-          const octokit = new Octokit({
-            auth: process.env.GITHUB_TOKEN,
-          });
-
-          const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
-
-          (async () => {
-            try {
-              const { data: { workflow_runs } } = await octokit.rest.actions.listWorkflowRunsForRepo({
-                owner,
-                repo,
-                per_page: 100,
-              });
-
-              if (workflow_runs.length === 0) {
-                console.log("No workflow runs found.");
-                return;
-              }
-
-              for (const run of workflow_runs) {
-                console.log(`Deleting logs for workflow run: ${run.id}`);
-                await octokit.rest.actions.deleteWorkflowRunLogs({
-                  owner,
-                  repo,
-                  run_id: run.id,
-                });
-              }
-              console.log("All workflow run logs deleted successfully.");
-            } catch (error) {
-              console.error("Error deleting workflow run logs:", error.message);
-            }
-          })();
-          EOF
-
-      - name: Install Dependencies
-        run: npm install @octokit/rest
-
-      - name: Execute Script
+      - name: Delete Workflow Runs Logs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node delete-workflow-logs.mjs
+        run: |
+          #!/bin/bash
+
+          # Get repository owner and name
+          REPO="${GITHUB_REPOSITORY}"
+          echo "Repository: $REPO"
+
+          # List workflow runs and delete logs
+          while :
+          do
+            # Fetch workflow runs
+            RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                          "https://api.github.com/repos/$REPO/actions/runs?per_page=100")
+
+            # Extract run IDs
+            RUN_IDS=$(echo "$RESPONSE" | jq -r '.workflow_runs[].id')
+
+            if [ -z "$RUN_IDS" ]; then
+              echo "No more workflow runs found."
+              break
+            fi
+
+            # Delete logs for each run
+            for RUN_ID in $RUN_IDS
+            do
+              echo "Deleting logs for workflow run ID: $RUN_ID"
+              curl -s -X DELETE -H "Authorization: token $GITHUB_TOKEN" \
+                   "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/logs"
+            done
+          done
+
+          echo "All workflow run logs deleted successfully."
