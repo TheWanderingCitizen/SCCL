@@ -13,6 +13,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4  # 使用 v4 版本
 
+    - name: Check if global.ini is modified
+      id: check_file
+      run: |
+        if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "global.ini"; then
+          echo "global.ini modified. Proceeding with the workflow."
+          echo "::set-output name=run_job::true"
+        else
+          echo "global.ini not modified. Skipping workflow."
+          echo "::set-output name=run_job::false"
+        fi
+
+    - name: Stop workflow if global.ini is not modified
+      if: steps.check_file.outputs.run_job == 'false'
+      run: |
+        echo "Skipping workflow as global.ini is not modified."
+        exit 0
+
     - name: Set up Node.js
       uses: actions/setup-node@v4  # 使用 v4 版本
       with:
