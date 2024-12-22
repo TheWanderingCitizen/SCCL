@@ -3,7 +3,6 @@ package cn.citizenwiki.processor.translation;
 
 import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.s3.S3Config;
-import cn.citizenwiki.config.GlobalConfig;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.utils.PinYinUtil;
@@ -52,9 +51,9 @@ public class PinYinTranslationProcessor extends CommonTranslationProcessor {
             String translation = pzTranslation.getTranslation();
             String key = pzTranslation.getKey();
             String keyLowerCase = key.toLowerCase();
-            if (keyLowerCase.startsWith("item_name")
+            if (key.startsWith("item_name")
                     || keyLowerCase.startsWith("item_decoration")
-                    || SearchableLocationReplacer.isLocationKey(key)) {
+                    || SearchableLocationReplacer.isSearchableKey(key)) {
                 String pinyin = PinYinUtil.getPinyin(translation);
                 if (Objects.nonNull(pinyin)) {
                     translation = translation + "[" + PinYinUtil.getPinyin(translation) + "]";

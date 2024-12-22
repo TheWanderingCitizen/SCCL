@@ -43,7 +43,7 @@ public class SearchableLocationReplacer {
         //找到所有地点封装到Map
         for (Map.Entry<String, PZTranslation> entry : mergedTranslateMap.entrySet()) {
             String key = entry.getKey();
-            if (isLocationKey(key)) {
+            if (isSearchableKey(key)) {
                 localtionMap.put(entry.getValue().getTranslation(), entry.getValue().getOriginal());
             }
         }
@@ -108,18 +108,21 @@ public class SearchableLocationReplacer {
     private static final Pattern STANTON = Pattern.compile("^(?i)stanton\\d*(?!.*_desc)(?!.*_add).*");
     private static final Pattern UI = Pattern.compile("^(?i)ui_pregame_port_.*_name");
     private static final Pattern RR = Pattern.compile("^(?i)RR_.*_L[0-9]+(?:(?!_desc).)*$");
+    private static final Pattern DFM = Pattern.compile("^(?i)dfm_crusader_crusader$");
+
 
     /**
-     * 判断key是否为标准地名
+     * 判断key是否为可搜索
      *
      * @param key
      * @return
      */
-    public static boolean isLocationKey(String key) {
+    public static boolean isSearchableKey(String key) {
         Matcher pyroMc = PYRO.matcher(key);
         Matcher stantonMc = STANTON.matcher(key);
         Matcher uiMc = UI.matcher(key);
         Matcher rRMc = RR.matcher(key);
-        return pyroMc.matches() || stantonMc.matches() || uiMc.matches() || rRMc.matches();
+        Matcher dfmMc = DFM.matcher(key);
+        return pyroMc.matches() || stantonMc.matches() || uiMc.matches() || rRMc.matches() || dfmMc.matches();
     }
 }

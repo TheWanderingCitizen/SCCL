@@ -3,7 +3,6 @@ package cn.citizenwiki.processor.translation;
 
 import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.s3.S3Config;
-import cn.citizenwiki.config.GlobalConfig;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.utils.SearchableLocationReplacer;
@@ -42,7 +41,7 @@ public class BothTranslationProcessor extends CommonTranslationProcessor {
         String value = pzTranslation.getTranslation();
         if (HalfTranslationProcessor.needProcess(pzTranslation) && !value.contains("[")) {
             // 使用正则表达式
-            boolean matches = itemPattern1.matcher(key).matches() || itemPattern2.matcher(key).matches() || SearchableLocationReplacer.isLocationKey(key);
+            boolean matches = itemPattern1.matcher(key).matches() || itemPattern2.matcher(key).matches() || SearchableLocationReplacer.isSearchableKey(key);
             if ((key.contains("Stanton") && key.contains("_")) || key.contains("mission_location") || key.contains("mission_contractor") || matches) {
                 value = pzTranslation.getOriginal() + " [" + pzTranslation.getTranslation() + "]";
             } else {
