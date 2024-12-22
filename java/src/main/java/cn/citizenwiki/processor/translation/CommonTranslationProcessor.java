@@ -96,6 +96,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
 
     @Override
     public void process(PZTranslation pzTranslation) {
+        pzTranslation.setTranslation(pzTranslation.getTranslation().replace("μ","u"));
         processBw(pzTranslation, this.bw);
     }
 
