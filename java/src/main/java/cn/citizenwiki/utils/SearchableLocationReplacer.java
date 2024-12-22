@@ -68,13 +68,9 @@ public class SearchableLocationReplacer {
 
     /**
      * 在地点文本后拼接可被搜索的英文文本
-     *
-     * @param pzTranslation
-     * @return
      */
-    public String replace(PZTranslation pzTranslation) {
-        String translation = pzTranslation.getTranslation();
-        if (pzTranslation.getKey().startsWith("mission_location") && !ignoreReplaceSearchKeys.contains(pzTranslation.getKey())) {
+    public String replace(String key,String translation) {
+        if (key.startsWith("mission_location") && !ignoreReplaceSearchKeys.contains(key)) {
             //将任务地名中的译名替换为译名[原文]，比如“哈哈斯坦顿”→“哈哈斯坦顿[Stanton]”
             Set<String> replacedWords = new HashSet<>();
             for (Map.Entry<String, String> entry : localtionMap.entrySet()) {
@@ -83,7 +79,7 @@ public class SearchableLocationReplacer {
                     replacedWords.add(entry.getKey());
                 }
             }
-            logger.debug("key：[{}]中的地点已被替换，替换后译文：[{}]", pzTranslation.getKey(), translation);
+            logger.debug("key：[{}]中的地点已被替换，替换后译文：[{}]", key, translation);
         }
         return translation;
     }
