@@ -1,0 +1,50 @@
+name: 翻译键值检查（发布版本前必须运行）
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  merge-and-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Merge and Check JSON Data
+        env:
+          URL_CHECKFILES: "https://paratranz.cn/api/projects/8340/files"
+          AUTHORIZATION: ${{ secrets.AUTHORIZATION }}
+        run: |
+          python merge_and_check.py
+
+      - name: Upload merged and inconsistencies data
+        uses: actions/upload-artifact@v3
+        with:
+          name: json-data
+          path: |
+            inconsistencies.json
+
+      - name: Evaluate Check Result
+        run: |
+          if [ -f inconsistencies.json ]; then
+            count=$(jq length inconsistencies.json)
+            if [ "$count" -eq 0 ]; then
+              echo "检查成功，无不一致项。"
+            else
+              echo "发现 $count 个不一致项，检查失败。"
+              exit 1
+            fi
+          fi

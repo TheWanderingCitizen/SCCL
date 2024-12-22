@@ -1,4 +1,4 @@
-name: 发行汉化版本
+name: 发行汉化版本（旧脚本/已弃用）
 
 on:
   workflow_dispatch: # 允许手动触发

@@ -1,0 +1,18 @@
+name: Delete all workflow runs
+on:
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  del_runs:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Delete all workflow runs for current repo
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: 0  # 删除所有
+          keep_minimum_runs: 0  # 不保留任何记录

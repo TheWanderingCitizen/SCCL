@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "global.ini"  # 仅在 global.ini 修改时触发
 
 jobs:
   convert-compare-json:
