@@ -96,10 +96,7 @@ def check_mission_consistency(data):
 
     return inconsistencies
 
-def check_item_types(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
-        data = json.load(file)
-
+def check_item_types(data):
     unique_item_types = {item['translation'].split('物品类型：')[1].split('\\n')[0] for item in data if '物品类型：' in item['translation']}
     unique_item_types_o = {item['original'].split('Item Type: ')[1].split('\\n')[0] for item in data if 'Item Type: ' in item['original']}
 
@@ -117,7 +114,6 @@ def check_item_types(file_path):
         if len(cn_types) > 1:
             print(f"English type '{en_type}' corresponds to multiple Chinese types: {cn_types}")
 
-    # Output all keys of original texts that contain 'Item Type: ' but the translation does not
     missing_translations_keys = [item['key'] for item in data if 'Item Type: ' in item['original'] and '物品类型：' not in item['translation']]
 
     if missing_translations_keys:
