@@ -127,6 +127,8 @@ def check_item_types(data):
 
 
 def main():
+    is_error = False
+
     url_checkfiles = "https://paratranz.cn/api/projects/8340/files"
     headers = {
         'Authorization': f"{os.getenv('AUTHORIZATION')}",
@@ -163,15 +165,18 @@ def main():
             print("-" * 40)
 
         save_to_json(filtered_inconsistencies, 'inconsistencies.json')
+        is_error = True
         print("不一致的结果已保存到 inconsistencies.json 文件。")
     else:
         print("所有格式内容一致，无不一致项。")
-        inconsistencies = inconsistencies + check_item_types(merged_data)
 
-        if inconsistencies:
+        item_type_inconsistencies = check_item_types(merged_data)
+
+        if item_type_inconsistencies:
             print("检测到物品类型不一致，以下是问题列表")
-            print(inconsistencies)
-            save_to_json(filtered_inconsistencies, 'inconsistencies.json')
+            print(item_type_inconsistencies)
+            if not is_error:
+                save_to_json(item_type_inconsistencies, 'inconsistencies.json')
         else:
             print("所有物品类型一致，无不一致项")
 
