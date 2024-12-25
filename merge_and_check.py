@@ -101,6 +101,7 @@ def check_item_types(data):
     unique_item_types_o = {item['original'].split('Item Type: ')[1].split('\\n')[0] for item in data if 'Item Type: ' in item['original']}
 
     item_type_mapping = {}
+    inconsistencies = []
 
     for item in data:
         if '物品类型：' in item['translation'] and 'Item Type: ' in item['original']:
@@ -113,15 +114,15 @@ def check_item_types(data):
     for en_type, cn_types in item_type_mapping.items():
         if len(cn_types) > 1:
             print(f"English type '{en_type}' corresponds to multiple Chinese types: {cn_types}")
+            inconsistencies.append(f"English type '{en_type}' corresponds to multiple Chinese types: {cn_types}")
 
     missing_translations_keys = [item['key'] for item in data if 'Item Type: ' in item['original'] and '物品类型：' not in item['translation']]
 
     if missing_translations_keys:
-        print("Keys of original texts with 'Item Type: ' but missing '物品类型：' in translation:")
-        for key in missing_translations_keys:
-            print(key)
+        inconsistencies.append("Keys of original texts with 'Item Type: ' but missing '物品类型：' in translation:")
+        inconsistencies.extend(missing_translations_keys)
 
-    return item_type_mapping
+    return inconsistencies
 
 
 def main():
