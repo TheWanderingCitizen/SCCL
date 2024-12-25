@@ -176,7 +176,9 @@ def main():
             print("检测到物品类型不一致，以下是问题列表")
             print(item_type_inconsistencies)
             if not is_error:
-                save_to_json(item_type_inconsistencies, 'inconsistencies.json')
+                # Convert sets to lists for JSON serialization
+                item_type_inconsistencies_serializable = {k: list(v) for k, v in item_type_inconsistencies.items()}
+                save_to_json(item_type_inconsistencies_serializable, 'inconsistencies.json')
         else:
             print("所有物品类型一致，无不一致项")
 
