@@ -113,7 +113,7 @@ def check_item_types(data):
 
     for en_type, cn_types in item_type_mapping.items():
         if len(cn_types) > 1:
-            print(f"English type '{en_type}' corresponds to multiple Chinese types: {cn_types}")
+            print(f"English type '{en_type}' : {cn_types}")
             inconsistencies.append(f"English type '{en_type}' corresponds to multiple Chinese types: {cn_types}")
 
     missing_translations_keys = [item['key'] for item in data if 'Item Type: ' in item['original'] and '物品类型：' not in item['translation']]
