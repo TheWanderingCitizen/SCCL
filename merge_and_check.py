@@ -96,8 +96,10 @@ def check_mission_consistency(data):
 
     return inconsistencies
 
-def check_item_types(data):
-    
+def check_item_types(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+
     unique_item_types = {item['translation'].split('物品类型：')[1].split('\\n')[0] for item in data if '物品类型：' in item['translation']}
     unique_item_types_o = {item['original'].split('Item Type: ')[1].split('\\n')[0] for item in data if 'Item Type: ' in item['original']}
 
