@@ -96,6 +96,36 @@ def check_mission_consistency(data):
 
     return inconsistencies
 
+def check_item_types(data):
+    
+    unique_item_types = {item['translation'].split('物品类型：')[1].split('\\n')[0] for item in data if '物品类型：' in item['translation']}
+    unique_item_types_o = {item['original'].split('Item Type: ')[1].split('\\n')[0] for item in data if 'Item Type: ' in item['original']}
+
+    item_type_mapping = {}
+
+    for item in data:
+        if '物品类型：' in item['translation'] and 'Item Type: ' in item['original']:
+            cn_type = item['translation'].split('物品类型：')[1].split('\\n')[0]
+            en_type = item['original'].split('Item Type: ')[1].split('\\n')[0]
+            if en_type not in item_type_mapping:
+                item_type_mapping[en_type] = set()
+            item_type_mapping[en_type].add(cn_type)
+
+    for en_type, cn_types in item_type_mapping.items():
+        if len(cn_types) > 1:
+            print(f"English type '{en_type}' corresponds to multiple Chinese types: {cn_types}")
+
+    # Output all keys of original texts that contain 'Item Type: ' but the translation does not
+    missing_translations_keys = [item['key'] for item in data if 'Item Type: ' in item['original'] and '物品类型：' not in item['translation']]
+
+    if missing_translations_keys:
+        print("Keys of original texts with 'Item Type: ' but missing '物品类型：' in translation:")
+        for key in missing_translations_keys:
+            print(key)
+
+    return item_type_mapping
+
+
 def main():
     url_checkfiles = "https://paratranz.cn/api/projects/8340/files"
     headers = {
@@ -136,6 +166,14 @@ def main():
         print("不一致的结果已保存到 inconsistencies.json 文件。")
     else:
         print("所有格式内容一致，无不一致项。")
+
+    inconsistencies = check_item_types(merged_data)
+
+    if inconsistencies:
+        print("检测到物品类型不一致，以下是问题列表")
+        print(inconsistencies)
+    else:
+        print("所有物品类型一致，无不一致项")
 
 if __name__ == "__main__":
     main()
