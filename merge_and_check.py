@@ -166,14 +166,14 @@ def main():
         print("不一致的结果已保存到 inconsistencies.json 文件。")
     else:
         print("所有格式内容一致，无不一致项。")
+        inconsistencies = inconsistencies + check_item_types(merged_data)
 
-    inconsistencies = check_item_types(merged_data)
-
-    if inconsistencies:
-        print("检测到物品类型不一致，以下是问题列表")
-        print(inconsistencies)
-    else:
-        print("所有物品类型一致，无不一致项")
+        if inconsistencies:
+            print("检测到物品类型不一致，以下是问题列表")
+            print(inconsistencies)
+            save_to_json(filtered_inconsistencies, 'inconsistencies.json')
+        else:
+            print("所有物品类型一致，无不一致项")
 
 if __name__ == "__main__":
     main()
