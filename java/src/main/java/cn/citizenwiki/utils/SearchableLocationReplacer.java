@@ -43,7 +43,8 @@ public class SearchableLocationReplacer {
         //找到所有地点封装到Map
         for (Map.Entry<String, PZTranslation> entry : mergedTranslateMap.entrySet()) {
             String key = entry.getKey();
-            if (isSearchableKey(key)) {
+            //原文和译文相同的情况下不替换
+            if (isSearchableKey(key) && entry.getValue().getOriginal().equals(entry.getValue().getTranslation())) {
                 localtionMap.put(entry.getValue().getTranslation(), entry.getValue().getOriginal());
             }
         }
