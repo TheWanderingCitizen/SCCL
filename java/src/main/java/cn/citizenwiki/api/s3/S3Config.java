@@ -10,6 +10,7 @@ public class S3Config {
     public static final String BOTH_DIR = "both";
     public static final String FULL_DIR = "full";
     public static final String HALF_DIR = "half";
+    public static final String SEARCH_DIR = "search";
     public static final String PTU_DIR = "ptu";
     public static final String PINYIN_DIR = "pinyin";
     public static final String ORGINAL_DIR = "orginal";

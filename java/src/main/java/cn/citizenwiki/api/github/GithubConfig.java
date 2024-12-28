@@ -14,6 +14,8 @@ public class GithubConfig {
     public static final String DUAL_BRANCH_NAME = "cn_en";
     //双语汉化分支名
     public static final String FULL_BRANCH_NAME = "main";
+
+    public static final String SEARCH_BRANCH_NAME = "cn_search";
     //英语分支名
     public static final String EN_BRANCH_NAME = "en";
     //拼音分支名

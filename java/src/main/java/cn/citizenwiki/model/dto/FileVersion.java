@@ -3,9 +3,6 @@ package cn.citizenwiki.model.dto;
 import cn.citizenwiki.model.dto.paratranz.response.PZFile;
 import cn.citizenwiki.utils.ParatranzFileUtil;
 
-import java.util.Arrays;
-import java.util.Objects;
-
 /**
  * 3.24.4 PTU 98767232
  */

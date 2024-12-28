@@ -7,7 +7,6 @@ import cn.citizenwiki.config.GlobalConfig;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.utils.FileUtil;
-import cn.citizenwiki.utils.SearchableLocationReplacer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +14,6 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
 import java.util.zip.Deflater;
 
 /**
@@ -25,8 +23,6 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(FullTranslationProcessor.class);
 
-    private SearchableLocationReplacer searchableLocationReplacer;
-
     private static final Path COMPRESS_LOCALIZATION_DIR = Paths.get("data", "Localization");
     private final Path COMPRESS_FILE_PATH = Paths.get(GlobalConfig.OUTPUT_DIR, "data.zip");
 
@@ -34,12 +30,6 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
 
     public FullTranslationProcessor() {
         super(GithubConfig.FULL_BRANCH_NAME);
-    }
-
-    @Override
-    public void beforeProcess(Map<String, PZTranslation> mergedTranslateMap) {
-        super.beforeProcess(mergedTranslateMap);
-        searchableLocationReplacer = new SearchableLocationReplacer(mergedTranslateMap);
     }
 
     /**
@@ -62,14 +52,9 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
     public void processBw(PZTranslation pzTranslation, BufferedWriter bw) {
         //写入文件
         if (bw != null) {
-            String translation = pzTranslation.getTranslation();
-            if(SearchableLocationReplacer.isSearchableKey(pzTranslation.getKey())){
-                translation = translation.replace(translation, translation + "[" + pzTranslation.getOriginal() + "]");
-            }
-            translation = searchableLocationReplacer.replace(pzTranslation.getKey(), translation);
             try {
-                bw.write(pzTranslation.getKey() + "=" + translation);
-                if (!translation.endsWith("\r") && !translation.endsWith("\n")) {
+                bw.write(pzTranslation.getKey() + "=" + pzTranslation.getTranslation());
+                if (!pzTranslation.getTranslation().endsWith("\r") && !pzTranslation.getTranslation().endsWith("\n")) {
                     bw.newLine();
                 }
             } catch (IOException e) {
@@ -90,7 +75,7 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
 
     @Override
     public String getProcessorName() {
-        return "汉化处理器";
+        return "全汉化处理器";
     }
 
     @Override
