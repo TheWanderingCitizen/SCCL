@@ -2,5 +2,6 @@
 ignoreKeys: #哪些key会被忽略（不进行替换）
   #- "2019_Ann_Sale_Day9"
   #- "2019_Ann_Sale_Day8"
-overrideMappings: #自定义替换文本
-  #派罗 888: 派罗发发发
+overrideMappings: #自定义替换文本,格式为：译文：替换内容
+  派罗 II: Pyro II
+  派罗 III: Pyro III
