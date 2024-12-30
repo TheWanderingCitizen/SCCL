@@ -1,18 +1,26 @@
 package cn.citizenwiki;
 
+import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.paratranz.ParatranzApi;
 import cn.citizenwiki.api.s3.S3Api;
 import cn.citizenwiki.api.s3.S3Config;
 import cn.citizenwiki.config.GlobalConfig;
+import cn.citizenwiki.config.JGitConfig;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.paratranz.response.PZFile;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.processor.translation.*;
 import cn.citizenwiki.utils.GlobalIniUtil;
 import cn.citizenwiki.utils.ParatranzFileUtil;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.ListBranchCommand;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.transport.RefSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -105,6 +113,8 @@ public class MergeAndConvert implements AutoCloseable {
                 logger.error("paratranz中缺少key:[{}]", loseKey);
             }
         }
+        //克隆盒子仓库
+        cloneScboxLocalization();
         // 遍历mergedTranslateMap，使用注册的TranslationProcessor进行处理
         CompletableFuture[] futures = new CompletableFuture[translationProcessors.length];
         for (int i = 0; i < translationProcessors.length; i++) {
@@ -117,6 +127,42 @@ public class MergeAndConvert implements AutoCloseable {
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static void cloneScboxLocalization() {
+        logger.info("开始克隆盒子仓库，此步时间较长请耐心等待...");
+        try(Git git = Git.cloneRepository()
+                    .setURI("https://github.com/" + GithubConfig.INSTANCE.getTargetOwner() + "/" + GithubConfig.INSTANCE.getTargetRepo())
+                    .setDirectory(new File(GithubConfig.ORIGIN_DIR))
+                    .setCloneAllBranches(true)
+                    .call()) {
+            Collection<Ref> branches = git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
+
+            List<RefSpec> refSpecs = new ArrayList<>(branches.size());
+            for (Ref branch : branches) {
+                String branchName = branch.getName();
+                if (branchName.startsWith("refs/remotes/origin/temp")) {
+                    String remoteBranchName = branchName.replace("refs/remotes/origin/", "");
+                    git.checkout().setName(branchName).call();
+                    git.checkout().setName("main").call();
+                    git.branchDelete().setBranchNames(remoteBranchName).call();
+                    // 推送删除远程分支
+                    RefSpec refSpec = new RefSpec()
+                            .setSource(null)
+                            .setDestination("refs/heads/"+remoteBranchName);
+                    refSpecs.add(refSpec);
+                }
+            }
+            if (!refSpecs.isEmpty()){
+                git.push().setCredentialsProvider(JGitConfig.CREDENTIALS_PROVIDER)
+                        .setRefSpecs(refSpecs.toArray(new RefSpec[refSpecs.size()]))
+                        .call();
+            }
+        } catch (GitAPIException e) {
+            logger.info("克隆盒子仓库异常", e);
+            throw new RuntimeException(e);
+        }
+        logger.info("盒子仓库已克隆");
     }
 
     /**

@@ -6,13 +6,19 @@ import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.github.GithubHttpException;
 import cn.citizenwiki.api.s3.S3Api;
 import cn.citizenwiki.config.GlobalConfig;
+import cn.citizenwiki.config.JGitConfig;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.utils.FileUtil;
 import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.PushCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.storage.pack.PackConfig;
+import org.eclipse.jgit.transport.CredentialsProvider;
+import org.eclipse.jgit.transport.FetchResult;
+import org.eclipse.jgit.transport.TrackingRefUpdate;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.slf4j.Logger;
 
@@ -27,8 +33,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * 汉化处理器
@@ -71,7 +76,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
             //先删除目录
             FileUtil.deleteDirectory(OUTPUT_DIR);
             //同步仓库最新内容
-            getLogger().info("[{}]开始fork sync[{}]分支", getProcessorName(), BRANCH_NAME);
+            getLogger().info("[{}]开始处理[{}]分支", getProcessorName(), BRANCH_NAME);
 //            try {
 //                GithubPulls pullRequest = githubApi.createPullRequest("fork sync " + BRANCH_NAME, GithubConfig.INSTANCE.getTargetOwner(),
 //                        GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getForkRepo(),
@@ -86,8 +91,8 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
 //                    getLogger().error("[{}]fork sync[{}]分支失败，详情：{}", getProcessorName(), BRANCH_NAME, e.getGitHubErrorResponse());
 //                }
 //            }
-            //拉取github fork仓库的代码
-            this.git = gitCloneAndCheckout(OUTPUT_DIR, getTempBranchName(lastFileVersion), BRANCH_NAME);
+//            //拉取github fork仓库的代码
+            this.git = copySourceAndCheckout(getTempBranchName(lastFileVersion));
             // 使用 Files.createFile 创建目标文件
             Files.deleteIfExists(filePath);
             Files.createFile(filePath);
@@ -100,9 +105,13 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
 
     }
 
+    public static final String TEMP_BRANCH_PREFIX = "temp";
+    public static final String TEMP_BRANCH_SEPARATOR = "_";
+
     /**
      * 获取临时分支名称
      * 注意: 在处理过程中获取到的分支名应保持一致
+     *
      * @param lastFileVersion
      * @return
      */
@@ -110,9 +119,9 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
         if (Objects.isNull(tempBranchName)) {
             String majorVersion = String.join(".", "" + lastFileVersion.getFirst(), "" + lastFileVersion.getMiddle(), "" + lastFileVersion.getLast());
             String yyyyMMddHHmm = startTime.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-            tempBranchName = String.join("-", BRANCH_NAME, majorVersion, lastFileVersion.getProfile().name(), "" + lastFileVersion.getVersion(), yyyyMMddHHmm);
+            tempBranchName = String.join(TEMP_BRANCH_SEPARATOR, TEMP_BRANCH_PREFIX, BRANCH_NAME, majorVersion, lastFileVersion.getProfile().name(), "" + lastFileVersion.getVersion(), yyyyMMddHHmm);
         }
-       return tempBranchName;
+        return tempBranchName;
     }
 
     @Override
@@ -194,9 +203,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
      * 拉取仓库指定分支到指定目录
      *
      * @param outputDir
-     * @param branchName
-     *
-     * 原先的fork仓库模式先废弃，以后如果有需求再启用
+     * @param branchName 原先的fork仓库模式先废弃，以后如果有需求再启用
      */
     @Deprecated
     private Git gitCloneRepo(String outputDir, String branchName) {
@@ -215,7 +222,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
                         packConfig.setCompressionLevel(5); // 设置压缩级别为最高
                         transport.setPackConfig(packConfig);
                     })
-                    .setCredentialsProvider(new UsernamePasswordCredentialsProvider(GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getToken()))
+                    .setCredentialsProvider(JGitConfig.CREDENTIALS_PROVIDER)
                     .setDepth(1)
                     .call();
             //checkout
@@ -235,40 +242,71 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
     }
 
     /**
-     * 拉取仓库指定分支到指定目录
+     * 复制盒子仓库到不同的目录，并迁出不同的分支
      *
-     * @param outputDir
-     * @param branchName
+     * @param tempBranchName 要生成的临时目录
      */
-    private Git gitCloneAndCheckout(String outputDir, String tempBranchName, String branchName) {
-
-        getLogger().info("[{}]开始克隆fork仓库分支[{}]，此步时间较长请耐心等待...", getProcessorName(), branchName);
+    private Git copySourceAndCheckout(String tempBranchName) {
+        //复制盒子仓库到当前处理器分支对应目录
         try {
-            //clone
-            Git git = Git.cloneRepository()
-                    .setURI(GIT_REMOTE)
-                    .setDirectory(new File(outputDir))
-                    .setBranch("refs/heads/" + branchName)
-                    .setTransportConfigCallback(transport -> {
-                        // 设置压缩
-                        PackConfig packConfig = new PackConfig();
-                        packConfig.setBigFileThreshold(5 * 1024 * 1024); // 设置大文件阈值为 1 MB
-                        packConfig.setCompressionLevel(5); // 设置压缩级别
-                        transport.setPackConfig(packConfig);
-                    })
-                    .setCredentialsProvider(new UsernamePasswordCredentialsProvider(GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getToken()))
-                    .setDepth(1)
-                    .call();
+            FileUtil.copyDirectory(Path.of(GithubConfig.ORIGIN_DIR), Path.of(OUTPUT_DIR));
+        } catch (IOException e) {
+            getLogger().info("[{}]复制盒子仓库到[{}]异常", getProcessorName(), Path.of(OUTPUT_DIR), e);
+            throw new RuntimeException(e);
+        }
+        // 在新目录中打开Git仓库
+        try {
+            Git git = Git.open(new File(OUTPUT_DIR));
+            // 迁出待处理分支
+            git.checkout().setName("refs/remotes/origin/" + BRANCH_NAME).call();
             //checkout
             git.checkout()
                     .setName(tempBranchName)
                     .setCreateBranch(true)// 每次都是新的分支名，所以每次都新建
                     .call();
             return git;
-        } catch (GitAPIException e) {
+        } catch (Exception e) {
+            getLogger().info("[{}]创建分支[{}]异常", getProcessorName(), tempBranchName, e);
             throw new RuntimeException(e);
-        } finally {
-            getLogger().info("[{}]克隆fork仓库分支[{}]结束", getProcessorName(), branchName);
+        }
+    }
+
+    /**
+     * 删除之前提交的分支
+     *
+     * @param git
+     * @throws GitAPIException
+     */
+    private void deleteTempBranch(Git git) throws GitAPIException {
+        // 执行fetch操作获取所有分支
+        FetchResult result = git.fetch()
+                .setCredentialsProvider(JGitConfig.CREDENTIALS_PROVIDER)
+                .call();
+        Collection<TrackingRefUpdate> trackingRefUpdates = result.getTrackingRefUpdates();
+        List<Ref> allBranches = git.branchList().call();
+        List<String> branchesToDelete = new ArrayList<>();
+        //找到要删除的分支
+        for (Ref ref : allBranches) {
+            String deleteBranchName = ref.getName().replace("refs/heads/", "");
+            if (deleteBranchName.startsWith(String.join(TEMP_BRANCH_SEPARATOR, TEMP_BRANCH_PREFIX, BRANCH_NAME))) {
+                branchesToDelete.add(deleteBranchName);
+            }
+        }
+        // 批量删除本地分支
+        if (!branchesToDelete.isEmpty()) {
+            getLogger().info("[{}]处理器正在删除分支[{}]", getProcessorName(), branchesToDelete);
+            git.branchDelete().setBranchNames(branchesToDelete.toArray(new String[0])).call();
+        }
+
+        // 批量推送删除远程分支
+        if (!branchesToDelete.isEmpty()) {
+            PushCommand pushCommand = git.push()
+                    .setCredentialsProvider(JGitConfig.CREDENTIALS_PROVIDER)
+                    .setRemote(GIT_REMOTE);
+            for (String branch : branchesToDelete) {
+                pushCommand.add(branch);
+            }
+            pushCommand.call();
         }
     }
 
@@ -286,7 +324,7 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
 //                }
 //                git.commit().setMessage(lastFileVersion.getName()).call();
 //                git.push()
-//                        .setCredentialsProvider(new UsernamePasswordCredentialsProvider(GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getToken()))
+//                        .setCredentialsProvider(JGitConfig.CREDENTIALS_PROVIDER)
 //                        .setRemote(GIT_REMOTE)
 //                        .call();
 //                getLogger().info("[{}]推送fork仓库[{}]分支成功", getProcessorName(), BRANCH_NAME);
@@ -304,25 +342,23 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
         String tempBranchName = getTempBranchName(lastFileVersion);
         getLogger().info("[{}]开始提交并推送[{}]分支", getProcessorName(), tempBranchName);
         boolean hasUncommittedChanges = true;
-        if (Objects.nonNull(this.git)) {
-            try {
-                git.add().addFilepattern(GithubConfig.CN_GLOBAL_INI_PATH).call();
-                //如果没有改动，则不用提交
-                if (git.status().call().hasUncommittedChanges()) {
-                    git.commit().setMessage(lastFileVersion.getName()).call();
-                    git.push()
-                            .setCredentialsProvider(new UsernamePasswordCredentialsProvider(GithubConfig.INSTANCE.getForkOwner(), GithubConfig.INSTANCE.getToken()))
-                            .setRemote(GIT_REMOTE)
-                            .call();
-                    getLogger().info("[{}]推送fork仓库[{}]分支成功", getProcessorName(), BRANCH_NAME);
-                }else{
-                    hasUncommittedChanges = false;
-                    getLogger().info("[{}]推送[{}]分支无修改，不推送", getProcessorName(), tempBranchName);
-                }
-            } catch (GitAPIException e) {
-                getLogger().info("[{}]推送[{}]分支异常", getProcessorName(), tempBranchName, e);
-                throw new RuntimeException(e);
+        try {
+            this.git.add().addFilepattern(GithubConfig.CN_GLOBAL_INI_PATH).call();
+            //如果没有改动，则不用提交
+            if (this.git.status().call().hasUncommittedChanges()) {
+                this.git.commit().setMessage(lastFileVersion.getName()).call();
+                this.git.push()
+                        .setCredentialsProvider(JGitConfig.CREDENTIALS_PROVIDER)
+                        .setRemote(GIT_REMOTE)
+                        .call();
+                getLogger().info("[{}]推送fork仓库[{}]分支成功", getProcessorName(), BRANCH_NAME);
+            } else {
+                hasUncommittedChanges = false;
+                getLogger().info("[{}]推送[{}]分支无修改，不推送", getProcessorName(), tempBranchName);
             }
+        } catch (Exception e) {
+            getLogger().info("[{}]推送[{}]分支异常", getProcessorName(), tempBranchName, e);
+            throw new RuntimeException(e);
         }
         return hasUncommittedChanges;
     }

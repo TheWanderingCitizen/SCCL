@@ -20,6 +20,8 @@ public class GithubConfig {
     public static final String EN_BRANCH_NAME = "en";
     //拼音分支名
     public static final String PINYIN_BRANCH_NAME = "cn_pinyin";
+    //拉取盒子仓库存放的本地目录
+    public static final String ORIGIN_DIR = "scbox_origin";
 
     //fork仓库的名称
     private final String forkRepo;
