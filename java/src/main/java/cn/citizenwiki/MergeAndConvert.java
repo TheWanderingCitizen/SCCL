@@ -137,32 +137,37 @@ public class MergeAndConvert implements AutoCloseable {
                     .setCloneAllBranches(true)
                     .call()) {
             Collection<Ref> branches = git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
-
-            List<RefSpec> refSpecs = new ArrayList<>(branches.size());
-            for (Ref branch : branches) {
-                String branchName = branch.getName();
-                if (branchName.startsWith("refs/remotes/origin/temp")) {
-                    String remoteBranchName = branchName.replace("refs/remotes/origin/", "");
-                    git.checkout().setName(branchName).call();
-                    git.checkout().setName("main").call();
-                    git.branchDelete().setBranchNames(remoteBranchName).call();
-                    // 推送删除远程分支
-                    RefSpec refSpec = new RefSpec()
-                            .setSource(null)
-                            .setDestination("refs/heads/"+remoteBranchName);
-                    refSpecs.add(refSpec);
-                }
-            }
-            if (!refSpecs.isEmpty()){
-                git.push().setCredentialsProvider(JGitConfig.CREDENTIALS_PROVIDER)
-                        .setRefSpecs(refSpecs.toArray(new RefSpec[refSpecs.size()]))
-                        .call();
-            }
+            //删除无用temp分支
+            deleteTempBranch(branches, git);
         } catch (GitAPIException e) {
             logger.info("克隆盒子仓库异常", e);
             throw new RuntimeException(e);
         }
         logger.info("盒子仓库已克隆");
+    }
+
+    private static void deleteTempBranch(Collection<Ref> branches, Git git) throws GitAPIException {
+        List<RefSpec> refSpecs = new ArrayList<>(branches.size());
+        for (Ref branch : branches) {
+            String branchName = branch.getName();
+            if (branchName.startsWith("refs/remotes/origin/temp")) {
+                String remoteBranchName = branchName.replace("refs/remotes/origin/", "");
+                logger.info("检测到临时分支[{}],将被删除", remoteBranchName);
+                git.checkout().setName(branchName).call();
+                git.checkout().setName("main").call();
+                git.branchDelete().setBranchNames(remoteBranchName).call();
+                // 推送删除远程分支
+                RefSpec refSpec = new RefSpec()
+                        .setSource(null)
+                        .setDestination("refs/heads/"+remoteBranchName);
+                refSpecs.add(refSpec);
+            }
+        }
+        if (!refSpecs.isEmpty()){
+            git.push().setCredentialsProvider(JGitConfig.CREDENTIALS_PROVIDER)
+                    .setRefSpecs(refSpecs.toArray(new RefSpec[refSpecs.size()]))
+                    .call();
+        }
     }
 
     /**
