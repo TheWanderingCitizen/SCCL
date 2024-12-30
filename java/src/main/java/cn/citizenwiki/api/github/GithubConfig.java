@@ -64,7 +64,7 @@ public class GithubConfig {
         return forkRepo;
     }
 
-    public String getTargetUsername() {
+    public String getTargetOwner() {
         return targetOwner;
     }
 

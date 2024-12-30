@@ -47,16 +47,16 @@ public class GithubApi extends BaseApi {
      * @param sourceOwner 源仓库owner
      * @param targetOwner 目标仓库owner
      * @param targetRepo 目标仓库名
-     * @param branchName 目标分支
+     * @param targetBranchName 目标分支
      * @param body Pull Request 的正文内容
      * @return 创建的 Pull Request 的详细信息
      * @see <a href="https://docs.github.com/zh/rest/pulls/pulls?apiVersion=2022-11-28#create-a-pull-request">文档</a>
      */
-    public GithubPulls createPullRequest(String title, String sourceOwner, String targetOwner, String targetRepo, String branchName, String body) throws GithubHttpException {
+    public GithubPulls createPullRequest(String title, String sourceOwner, String sourceBranchName, String targetOwner, String targetRepo, String targetBranchName, String body) throws GithubHttpException {
         String url = String.format("%s/repos/%s/%s/pulls", GithubConfig.BASE_API_URL, targetOwner, targetRepo);
 
         // 使用 Jackson 库构建 JSON 请求体
-        PullRequest pullRequest = new PullRequest(title, sourceOwner + ":" + branchName, branchName, body);
+        PullRequest pullRequest = new PullRequest(title, sourceOwner + ":" + sourceBranchName, targetBranchName, body);
         String jsonBody;
         try {
             jsonBody = GithubJacksonTools.om.writeValueAsString(pullRequest);

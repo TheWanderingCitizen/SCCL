@@ -34,7 +34,7 @@ public class ProcessorTask implements Runnable {
         logger.info("[{}]开始执行", translationProcessor.getProcessorName());
         try {
             //处理前
-            translationProcessor.beforeProcess(mergedTranslateMap);
+            translationProcessor.beforeProcess(mergedTranslateMap, lastFileVersion);
             //处理汉化文本
             for (Map.Entry<String, PZTranslation> entry : mergedTranslateMap.entrySet()) {
                 PZTranslation cloneValue = entry.getValue().clone();

@@ -14,7 +14,7 @@ public interface TranslationProcessor extends BaseProcessor {
     /**
      * 在所有词条开始处理前调用，只会调用一次
      */
-    void beforeProcess(Map<String, PZTranslation> mergedTranslateMap);
+    void beforeProcess(Map<String, PZTranslation> mergedTranslateMap, FileVersion lastFileVersion);
 
     /**
      * 处理词条,每遍历到一个词条都会调用一次

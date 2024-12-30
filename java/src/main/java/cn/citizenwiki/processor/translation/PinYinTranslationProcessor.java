@@ -29,8 +29,8 @@ public class PinYinTranslationProcessor extends CommonTranslationProcessor {
     }
 
     @Override
-    public void beforeProcess(Map<String, PZTranslation> mergedTranslateMap) {
-        super.beforeProcess(mergedTranslateMap);
+    public void beforeProcess(Map<String, PZTranslation> mergedTranslateMap, FileVersion lastFileVersion) {
+        super.beforeProcess(mergedTranslateMap, lastFileVersion);
     }
 
     /**

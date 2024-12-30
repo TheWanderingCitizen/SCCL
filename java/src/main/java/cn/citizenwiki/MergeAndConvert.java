@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 /**
  * Hello world!
  */
-public class MergeAndConvert {
+public class MergeAndConvert implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(MergeAndConvert.class);
 
@@ -48,8 +48,12 @@ public class MergeAndConvert {
         processorExecutor = buildProcessorExecutor();
     }
 
-    public static void main(String[] args) throws IOException {
-        new MergeAndConvert().fetchAndMergeTranslations();
+    public static void main(String[] args) {
+        try(MergeAndConvert mergeAndConvert = new MergeAndConvert()) {
+            mergeAndConvert.fetchAndMergeTranslations();
+        }catch (Exception e) {
+           logger.error(e.getMessage(), e);
+        }
     }
 
     /**
@@ -113,7 +117,6 @@ public class MergeAndConvert {
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
-        processorExecutor.shutdown();
     }
 
     /**
@@ -191,4 +194,8 @@ public class MergeAndConvert {
         );
     }
 
+    @Override
+    public void close() throws Exception {
+        this.processorExecutor.shutdown();
+    }
 }
