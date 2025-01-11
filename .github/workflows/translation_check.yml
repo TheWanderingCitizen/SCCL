@@ -2,8 +2,6 @@ name: 翻译键值检查（发布版本前必须运行）
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
 
 jobs:
   merge-and-check:
