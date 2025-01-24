@@ -3,20 +3,20 @@ package cn.citizenwiki.utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 
 public class GlobalIniUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalIniUtil.class);
 
-    public static LinkedHashMap<String, String> convertIniToMap(InputStream inputStream) {
+    public static LinkedHashMap<String, String> convertIniToMap(Path path) {
         String iniContent;
         try {
-            iniContent = latin1ToUft8String(inputStream);
+            iniContent = latin1ToUtf8String(path);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -24,56 +24,72 @@ public class GlobalIniUtil {
         LinkedHashMap<String, String> iniMap = new LinkedHashMap<>();
 
         // 按行解析文件内容
-        String[] lines = iniContent.split("\n");
-        for (String line : lines) {
+        BufferedReader bufferedReader = new BufferedReader(new StringReader(iniContent));
+        bufferedReader.lines().forEach(line -> {
             // 检查是否包含键值对
-            if (line.contains("=")) {
-                String[] keyValue = line.split("=", 2); // 分割成键和值
-                String key = keyValue[0];
-                String value = keyValue[1];
-                iniMap.put(key, value);
+            try {
+                if (line.contains("=")) {
+                    String[] keyValue = line.split("=", 2); // 分割成键和值
+                    String key = keyValue[0];
+                    String value = keyValue[1];
+                    iniMap.put(key, value);
+                }
+            } catch (Exception e) {
+                logger.error(line, e);
             }
-        }
-
+        });
         return iniMap;
     }
 
+    public static final byte SPACE_BYTE = (byte)0xA0;
+    public static final byte NO_BREAK_BYTE = (byte)0xC2;
 
     /**
-     * 将latin1输入流转换为UTF8字节数组,替换latin1的无空格字符，并跳过BOM
-     * @param inputStream latin1文本输入流
-     * @return uft8字符串
+     * 跳过bom。并将0XA0替换为no-break space
+     *
+     * @param filePath Latin1文件的路径
+     * @return UTF-8字符串
      * @throws IOException
      */
-    private static String latin1ToUft8String(InputStream inputStream) throws IOException {
-        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-            byte[] buffer = new byte[4096]; // 使用4KB的缓冲区
+    private static String latin1ToUtf8String(Path filePath) throws IOException {
+        try (InputStream inputStream = Files.newInputStream(filePath);
+             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+
+            byte[] buffer = new byte[4096]; // 4KB缓冲区
+            boolean previousByteWasC2 = false; // 前一个字节是否为0xC2
+
+            // 读取开头的3个字节，检查BOM
+            byte[] bomBuffer = new byte[3];
+            int bomBytesRead = inputStream.read(bomBuffer);
+            if (bomBytesRead >= 3 &&
+                    bomBuffer[0] == (byte) 0xEF &&
+                    bomBuffer[1] == (byte) 0xBB &&
+                    bomBuffer[2] == (byte) 0xBF) {
+            } else if (bomBytesRead > 0) {
+                // 如果没有BOM，将读取的字节写入输出流
+                byteArrayOutputStream.write(bomBuffer, 0, bomBytesRead);
+            }
+            // 处理剩余的数据
             int bytesRead;
-            boolean bomSkipped = false; // 标记是否已跳过BOM
-
             while ((bytesRead = inputStream.read(buffer)) != -1) {
-                // 仅在第一次循环时检查BOM
-                if (!bomSkipped && bytesRead >= 3 &&
-                        buffer[0] == (byte) 0xEF && buffer[1] == (byte) 0xBB && buffer[2] == (byte) 0xBF) {
-                    // 跳过BOM
-                    bomSkipped = true;
-                    // 处理从第四个字节开始的内容
-                    bytesRead -= 3; // 调整bytesRead
-                    byteArrayOutputStream.write(buffer, 3, bytesRead); // 直接写入跳过BOM后的数据
-                    continue; // 跳过本次循环
-                }
-
-                // 处理无空格字符 (0xA0) 为 UTF-8 的无空格字符 (0xC2 0xA0)
+                // 处理无空格字符（0xA0）并转换为UTF-8
                 for (int i = 0; i < bytesRead; i++) {
-                    if (buffer[i] == (byte) 0xA0) {
-                        byteArrayOutputStream.write(0xC2); // 写入UTF-8前导字节
-                        byteArrayOutputStream.write(0xA0); // 写入UTF-8无空格字符
+                    byte currentByte = buffer[i];
+                    if (currentByte == SPACE_BYTE && !previousByteWasC2) {
+                        // 写入UTF-8无空格字符（0xC2 0xA0）
+                        byteArrayOutputStream.write(NO_BREAK_BYTE);
+                        byteArrayOutputStream.write(SPACE_BYTE);
+                        previousByteWasC2 = false;
                     } else {
-                        byteArrayOutputStream.write(buffer[i]); // 写入其他字节
+                        // 写入其他字节
+                        byteArrayOutputStream.write(currentByte);
+                        previousByteWasC2 = (currentByte == NO_BREAK_BYTE);
                     }
                 }
             }
-            return byteArrayOutputStream.toString(StandardCharsets.UTF_8); // 返回字节数组
+
+            // 将字节数组转换为UTF-8字符串
+            return byteArrayOutputStream.toString(StandardCharsets.UTF_8);
         }
     }
 

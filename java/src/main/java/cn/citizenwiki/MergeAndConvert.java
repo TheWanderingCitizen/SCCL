@@ -85,9 +85,8 @@ public class MergeAndConvert implements AutoCloseable {
         //从本地读取global.ini
         logger.info("正在读取global.ini数据，此数据将作为基准数据...");
         Path sourcePath = Paths.get("global.ini");
-        InputStream inputStream = Files.newInputStream(sourcePath);
         //转换global.ini
-        LinkedHashMap<String, String> globalIniMap = GlobalIniUtil.convertIniToMap(inputStream);
+        LinkedHashMap<String, String> globalIniMap = GlobalIniUtil.convertIniToMap(sourcePath);
         if (globalIniMap.isEmpty()) {
             logger.error("未从global.ini解析到条目，请检查文件是否正确");
             return;
