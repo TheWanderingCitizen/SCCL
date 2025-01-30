@@ -9,6 +9,7 @@ import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.utils.FileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -98,8 +99,8 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
         // 推送zip压缩到存储桶
         String bucketPath = S3Config.ZIP_FILE_NAME;
         getLogger().info("开始上传压缩文件至存储桶[{}]", bucketPath);
-        super.s3Api.putObject(bucketPath, Paths.get(OUTPUT_PATH));
-        getLogger().info("上传压缩文件至存储桶[{}]成功", bucketPath);
+        PutObjectResponse putObjectResponse = super.s3Api.putObject(bucketPath, Paths.get(OUTPUT_PATH));
+        getLogger().info("上传压缩文件至存储桶[{}]结果[{}]", bucketPath, putObjectResponse);
 
     }
 }
