@@ -106,6 +106,10 @@ public class SearchableLocationReplacer {
     private static final Pattern UI = Pattern.compile("^(?i)ui_pregame_port_.*_name");
     private static final Pattern RR = Pattern.compile("^(?i)RR_.*_L[0-9]+(?:(?!_desc).)*$");
     private static final Pattern DFM = Pattern.compile("^(?i)dfm_crusader_crusader$");
+    //派罗远星站规则
+    private static final Pattern ASTEROIDCLUSTER_N_BASE_PYRO_ENCOUNTER_REGION_X = Pattern.compile("^AsteroidCluster_\\d+Base_Pyro_Encounter_Region[A-Za-z]+(_\\d{3})$");
+    //焰联监控站匹配规则
+    private static final Pattern AsteroidBase_P_N_L_N = Pattern.compile("^AsteroidBase_P\\d+_L\\d+$");
 
 
     /**
@@ -120,6 +124,9 @@ public class SearchableLocationReplacer {
         Matcher uiMc = UI.matcher(key);
         Matcher rRMc = RR.matcher(key);
         Matcher dfmMc = DFM.matcher(key);
-        return pyroMc.matches() || stantonMc.matches() || uiMc.matches() || rRMc.matches() || dfmMc.matches();
+        Matcher abper = ASTEROIDCLUSTER_N_BASE_PYRO_ENCOUNTER_REGION_X.matcher(key);
+        Matcher apl = AsteroidBase_P_N_L_N.matcher(key);
+        return pyroMc.matches() || stantonMc.matches() || uiMc.matches() || rRMc.matches() || dfmMc.matches()
+                || abper.matches() || apl.matches();
     }
 }
