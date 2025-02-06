@@ -105,7 +105,7 @@ public class SearchableLocationReplacer {
     private static final Pattern STANTON = Pattern.compile("^(?i)stanton\\d*(?!.*_desc)(?!.*_add).*");
     private static final Pattern UI = Pattern.compile("^(?i)ui_pregame_port_.*_name");
     private static final Pattern RR = Pattern.compile("^(?i)RR_.*_L[0-9]+(?:(?!_desc).)*$");
-    //RR_P{N}
+    //RR_P{N} 如轨道讣闻站
     private static final Pattern RRP = Pattern.compile("^(?i)RR_P\\d+(?:(?!_desc).)*$");
     private static final Pattern DFM = Pattern.compile("^(?i)dfm_crusader_crusader$");
     //派罗远星站规则
