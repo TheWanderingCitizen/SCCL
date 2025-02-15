@@ -29,7 +29,7 @@ jobs:
           python merge_and_check.py
 
       - name: Upload merged and inconsistencies data
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: json-data
           path: |
