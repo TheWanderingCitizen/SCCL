@@ -70,15 +70,17 @@ public class HalfTranslationProcessor extends CommonTranslationProcessor {
     /**
      * 需要被处理返回true，否则false
      * 该规则被暴露,使之可以被其它processor使用
-     * @param PZTranslation
+     * @param pzTranslation
      * @return
      */
-    public static boolean needProcess(PZTranslation PZTranslation) {
-        String keyLower = PZTranslation.getKey().toLowerCase();
+    public static boolean needProcess(PZTranslation pzTranslation) {
+        String keyLower = pzTranslation.getKey().toLowerCase();
         return ((startWithWords.stream().anyMatch(keyLower::startsWith)
                 || keyLower.contains("_repui")
                 || keyLower.endsWith("_from"))
-                && !keyLower.contains("desc"));
+                && !keyLower.contains("desc")
+                //包含表达式的不能处理
+                && (!pzTranslation.getOriginal().contains("~") && !pzTranslation.getOriginal().contains("%")));
     }
 
     @Override
