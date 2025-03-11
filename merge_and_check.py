@@ -31,7 +31,8 @@ def check_mission_consistency(data):
     for entry in data:
         original = entry.get('original', '').replace(' ', '')
         translation = entry.get('translation', '').replace(' ', '')
-
+        if translation == '':
+            continue
         # Check ~key(Value) consistency
         original_matches = pattern_key_value.findall(original)
         translation_matches = pattern_key_value.findall(translation)
@@ -104,6 +105,8 @@ def check_item_types(data):
     inconsistencies = []
 
     for item in data:
+        if item['translation'] == '':
+            continue
         if '物品类型：' in item['translation'] and 'Item Type: ' in item['original']:
             cn_type = item['translation'].split('物品类型：')[1].split('\\n')[0]
             en_type = item['original'].split('Item Type: ')[1].split('\\n')[0]
