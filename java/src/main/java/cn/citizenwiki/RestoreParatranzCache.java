@@ -40,7 +40,6 @@ public class RestoreParatranzCache {
         }
         List<PZFile> newPzFiles = paratranzApi.projectFiles();
         String lastMetadata = ParatranzJacksonTools.om.writeValueAsString(newPzFiles);
-        logger.info("api返回文件信息：\n{}", lastMetadata);
         //将最新信息写入metadata
         Files.writeString(metadataFilePath, lastMetadata);
 
