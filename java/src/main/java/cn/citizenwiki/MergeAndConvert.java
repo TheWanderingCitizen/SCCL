@@ -2,6 +2,8 @@ package cn.citizenwiki;
 
 import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.paratranz.ParatranzApi;
+import cn.citizenwiki.api.paratranz.ParatranzCache;
+import cn.citizenwiki.api.paratranz.ParatranzJacksonTools;
 import cn.citizenwiki.api.s3.S3Api;
 import cn.citizenwiki.api.s3.S3Config;
 import cn.citizenwiki.config.GlobalConfig;
@@ -37,7 +39,7 @@ public class MergeAndConvert implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(MergeAndConvert.class);
 
     //Paratranz Apibao包装类
-    private final ParatranzApi paratranzApi = ParatranzApi.INSTANCE;
+    private static final ParatranzApi paratranzApi = ParatranzApi.INSTANCE;
     //词条处理器
     private final TranslationProcessor[] translationProcessors =
             new TranslationProcessor[]{new FullTranslationProcessor(), new HalfTranslationProcessor(), new BothTranslationProcessor(), new PinYinTranslationProcessor(), new SearchableTranslationProcessor()};
@@ -55,21 +57,21 @@ public class MergeAndConvert implements AutoCloseable {
     }
 
     public static void main(String[] args) throws Exception {
-        try(MergeAndConvert mergeAndConvert = new MergeAndConvert()) {
-            mergeAndConvert.fetchAndMergeTranslations();
-        }catch (Exception e) {
-           logger.error(e.getMessage(), e);
-           throw e;
+        //更新pz缓存
+        List<PZFile> pzFiles = ParatranzCache.INSTANCE.restorePatatranzCache();
+        try (MergeAndConvert mergeAndConvert = new MergeAndConvert()) {
+            mergeAndConvert.fetchAndMergeTranslations(pzFiles);
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+            throw e;
         }
     }
 
     /**
      * 合并 Paratranz 上的所有汉化文件,并调用translationProcessors进行处理
      */
-    public void fetchAndMergeTranslations() throws IOException {
-        logger.info("从 Paratranz 拉取数据...");
-        //拉取所有汉化文件
-        List<PZFile> pzFiles = paratranzApi.projectFiles();
+    public void fetchAndMergeTranslations(List<PZFile> pzFiles) throws IOException {
+        //拉取所有汉化文件元信息
         logger.info("拉取到[{}]个文件", pzFiles.size());
         if (pzFiles.isEmpty()) {
             return;
@@ -92,7 +94,7 @@ public class MergeAndConvert implements AutoCloseable {
         }
         logger.info("读取到{}行数据", globalIniMap.size());
         //将原始文件上传到存储桶
-        if (GlobalConfig.SW_PUBLISH){
+        if (GlobalConfig.SW_PUBLISH) {
             String bucketPath = S3Config.ORGINAL_DIR + "/global.ini";
             logger.info("正在上传global.ini至存储桶[{}]", bucketPath);
             s3Api.putObject(bucketPath, sourcePath);
@@ -129,11 +131,11 @@ public class MergeAndConvert implements AutoCloseable {
 
     private static void cloneScboxLocalization() {
         logger.info("开始克隆盒子仓库，此步时间较长请耐心等待...");
-        try(Git git = Git.cloneRepository()
-                    .setURI("https://github.com/" + GithubConfig.INSTANCE.getTargetOwner() + "/" + GithubConfig.INSTANCE.getTargetRepo())
-                    .setDirectory(new File(GithubConfig.ORIGIN_DIR))
-                    .setCloneAllBranches(true)
-                    .call()) {
+        try (Git git = Git.cloneRepository()
+                .setURI("https://github.com/" + GithubConfig.INSTANCE.getTargetOwner() + "/" + GithubConfig.INSTANCE.getTargetRepo())
+                .setDirectory(new File(GithubConfig.ORIGIN_DIR))
+                .setCloneAllBranches(true)
+                .call()) {
             Collection<Ref> branches = git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
             //删除无用temp分支
             deleteTempBranch(branches, git);
@@ -157,11 +159,11 @@ public class MergeAndConvert implements AutoCloseable {
                 // 推送删除远程分支
                 RefSpec refSpec = new RefSpec()
                         .setSource(null)
-                        .setDestination("refs/heads/"+remoteBranchName);
+                        .setDestination("refs/heads/" + remoteBranchName);
                 refSpecs.add(refSpec);
             }
         }
-        if (!refSpecs.isEmpty()){
+        if (!refSpecs.isEmpty()) {
             git.push().setCredentialsProvider(JGitConfig.CREDENTIALS_PROVIDER)
                     .setRefSpecs(refSpecs.toArray(new RefSpec[refSpecs.size()]))
                     .call();
@@ -172,7 +174,7 @@ public class MergeAndConvert implements AutoCloseable {
      * 合并所有汉化文件,按照key的字典序排序(原来的逻辑)
      * 这里会显得用LinkedHashMap没有必要,不过以防万一用上,就用LinkedHashMap了
      */
-    private Map<String, PZTranslation> mergeTranslateData(LinkedHashMap<String, String> globalIniMap, List<PZFile> pzFiles) {
+    private Map<String, PZTranslation> mergeTranslateData(LinkedHashMap<String, String> globalIniMap, List<PZFile> pzFiles) throws IOException {
         logger.info("开始拉取并合并paratranz汉化文件");
         Map<String, PZTranslation> mergedTranslateMap = new TreeMap<>();
         Map<String, PZTranslation> pzMap = new HashMap<>(globalIniMap.size());
@@ -181,9 +183,10 @@ public class MergeAndConvert implements AutoCloseable {
                 //跳过非汉化文件
                 continue;
             }
-            logger.info("正在拉取[{}]...",pzFile.getName());
-            paratranzApi.fileTranslation(pzFile.getId())
-                    .stream()
+            //读取翻译文件缓存
+            Path path = Path.of(ParatranzCache.CACHE_DIR, pzFile.getName());
+            List<PZTranslation> pzTranslations = ParatranzJacksonTools.om.readValue(path.toFile(), ParatranzJacksonTools.LIST_TRANSLATION);
+            pzTranslations.stream()
                     .collect(Collectors.toMap(PZTranslation::getKey, Function.identity(),
                             //pz相同key保留id大的
                             (v1, v2) -> v1.getId() > v2.getId() ? v1 : v2, () -> pzMap));
@@ -215,12 +218,12 @@ public class MergeAndConvert implements AutoCloseable {
                 fakePZTranslation.setTranslation(enValue);
                 fakePZTranslation.setId(0L);
                 mergedTranslateMap.put(entry.getKey(), fakePZTranslation);
-                logger.debug("key:[{}]在global.ini不存在,将使用原文:{}", entry.getKey() , fakePZTranslation);
+                logger.debug("key:[{}]在global.ini不存在,将使用原文:{}", entry.getKey(), fakePZTranslation);
             }
         }
 
         logger.info("paratranz文件合并后共有[{}]行数据", mergedTranslateMap.size());
-        if (globalIniMap.size() != mergedTranslateMap.size()){
+        if (globalIniMap.size() != mergedTranslateMap.size()) {
             throw new RuntimeException("合并后行数[%d]与global.ini行数[%d]不一致,请联系开发查看问题".formatted(mergedTranslateMap.size(), globalIniMap.size()));
         }
         return mergedTranslateMap;

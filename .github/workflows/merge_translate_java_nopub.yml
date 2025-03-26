@@ -9,38 +9,52 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4  # 拉取仓库代码
+      - uses: actions/checkout@v4  # 拉取仓库代码
 
-    - name: 准备环境 # 配置 JDK 版本
-      uses: actions/setup-java@v4 
-      with:
-        java-version: '23'
-        distribution: 'temurin'
-        cache: maven
-        cache-dependency-path: 'java/pom.xml'
+      - name: 加载缓存
+        uses: actions/cache@v4
+        with:
+          path: cache/paratranz  # 缓存的文件目录
+          key: cache-paratranz-${{ github.run_id }}
+          restore-keys: cache-paratranz-
 
-    - name: 编译 # 编译项目
-      run: mvn -f java/pom.xml compile
+      - name: 准备环境 # 配置 JDK 版本
+        uses: actions/setup-java@v4
+        with:
+          java-version: '24'
+          distribution: 'temurin'
+          cache: maven
+          cache-dependency-path: 'java/pom.xml'
 
-    - name: 复制依赖 # 复制依赖
-      run: mvn -f java/pom.xml dependency:copy-dependencies -DoutputDirectory=target/dependency
+      - name: 编译 # 编译项目
+        run: mvn -f java/pom.xml compile
 
-    - name: 执行脚本 # 执行
-      run: java -cp "java/target/classes:java/target/dependency/*" cn.citizenwiki.MergeAndConvert  # 运行指定类
-      env:
-        PZ_TOKEN: ${{ secrets.PZ_TOKEN }}
-        PZ_PROJECT_ID: ${{ secrets.PZ_PROJECT_ID }}
-        GITHUB_FORK_USERNAME: ${{ secrets.GH_FORK_USERNAME }}
-        GITHUB_FORK_REPO: ${{ secrets.GH_FORK_REPO }}
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
-        S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
-        S3_BUCKET: ${{ secrets.S3_BUCKET }}
-        S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
-        SW_PUBLISH: false
+      - name: 复制依赖 # 复制依赖
+        run: mvn -f java/pom.xml dependency:copy-dependencies -DoutputDirectory=target/dependency
 
-    - name: 上传生成的文件 # 上传文件,在action页面可以下载
-      uses: actions/upload-artifact@v4
-      with:
-        name: ini-files
-        path: final_output/*
+      - name: 执行脚本 # 执行
+        run: java -cp "java/target/classes:java/target/dependency/*" cn.citizenwiki.MergeAndConvert  # 运行指定类
+        env:
+          PZ_TOKEN: ${{ secrets.PZ_TOKEN }}
+          PZ_PROJECT_ID: ${{ secrets.PZ_PROJECT_ID }}
+          GITHUB_FORK_USERNAME: ${{ secrets.GH_FORK_USERNAME }}
+          GITHUB_FORK_REPO: ${{ secrets.GH_FORK_REPO }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          SW_PUBLISH: false
+
+      - name: 上传生成的文件 # 上传文件,在action页面可以下载
+        uses: actions/upload-artifact@v4
+        with:
+          name: ini-files
+          path: final_output/*
+
+      - name: 更新缓存
+        uses: actions/cache@v4
+        with:
+          path: cache/paratranz  # 缓存的文件目录
+          key: cache-paratranz-${{ github.run_id }}
+          restore-keys: cache-paratranz-

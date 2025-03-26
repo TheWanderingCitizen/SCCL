@@ -10,7 +10,7 @@ import java.util.Map;
 
 /**
  * 处理器Task类，会在主流程中被调用
- * @see MergeAndConvert#fetchAndMergeTranslations()
+ * @see MergeAndConvert#fetchAndMergeTranslations(java.util.List)
  */
 public class ProcessorTask implements Runnable {
 
