@@ -1,4 +1,4 @@
-name: java版发行汉化(不发布)
+name: 加载paratranz缓存
 
 on:
   workflow_dispatch: # 允许手动触发
