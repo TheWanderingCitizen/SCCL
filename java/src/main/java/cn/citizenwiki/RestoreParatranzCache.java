@@ -26,10 +26,7 @@ public class RestoreParatranzCache {
     private static final String METADATA_FILE_NAME = "paratranz_files_metadata.info";
 
     public static void main(String[] args) throws Exception {
-        Path cacheDirPath = Path.of(CACHE_DIR);
-        if (!Files.isDirectory(cacheDirPath)){
-            Files.createDirectories(cacheDirPath);
-        }
+        Files.createDirectories(Path.of(CACHE_DIR));
         //读取缓存中的文件
         Path metadataFilePath = Path.of(CACHE_DIR, METADATA_FILE_NAME);
         Map<String, PZFile> cachePzMap = new HashMap<>();
@@ -55,7 +52,9 @@ public class RestoreParatranzCache {
             }else{
                 //将新内容写入旧文件
                 List<PZTranslation> pzTranslations = paratranzApi.fileTranslation(newPzFile.getId());
-                Files.writeString(Path.of(CACHE_DIR, newPzFile.getName()), ParatranzJacksonTools.om.writeValueAsString(pzTranslations));
+                Path newPzFilePath = Path.of(CACHE_DIR, newPzFile.getName());
+                Files.createDirectories(newPzFilePath);
+                Files.writeString(newPzFilePath, ParatranzJacksonTools.om.writeValueAsString(pzTranslations));
             }
         }
 
