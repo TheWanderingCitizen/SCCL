@@ -11,7 +11,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4  # 拉取仓库代码
 
-    - name: Set up JDK # 配置 JDK 版本
+    - name: 准备环境 # 配置 JDK 版本
       uses: actions/setup-java@v4 
       with:
         java-version: '23'
@@ -19,13 +19,13 @@ jobs:
         cache: maven
         cache-dependency-path: 'java/pom.xml'
 
-    - name: Compile with Maven # 编译项目
+    - name: 编译 # 编译项目
       run: mvn -f java/pom.xml compile
 
-    - name: Copy dependencies # 复制依赖
+    - name: 复制依赖 # 复制依赖
       run: mvn -f java/pom.xml dependency:copy-dependencies -DoutputDirectory=target/dependency
 
-    - name: Run Specified Java Class # 执行
+    - name: 执行脚本 # 执行
       run: java -cp "java/target/classes:java/target/dependency/*" cn.citizenwiki.MergeAndConvert  # 运行指定类
       env:
         PZ_TOKEN: ${{ secrets.PZ_TOKEN }}
@@ -39,7 +39,7 @@ jobs:
         S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
         SW_PUBLISH: false
 
-    - name: Upload INI files # 上传文件,在action页面可以下载
+    - name: 上传生成的文件 # 上传文件,在action页面可以下载
       uses: actions/upload-artifact@v4
       with:
         name: ini-files
