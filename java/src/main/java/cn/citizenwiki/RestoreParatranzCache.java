@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,7 @@ public class RestoreParatranzCache {
         String lastMetadata = ParatranzJacksonTools.om.writeValueAsString(newPzFiles);
         logger.info("api返回文件信息：\n{}", lastMetadata);
         //将最新信息写入metadata
-        Files.writeString(metadataFilePath, lastMetadata);
+        Files.writeString(metadataFilePath, lastMetadata, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
         for (PZFile newPzFile : newPzFiles) {
             PZFile cachePzFile = cachePzMap.get(newPzFile.getName());
