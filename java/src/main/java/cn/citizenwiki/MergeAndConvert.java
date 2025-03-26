@@ -54,11 +54,12 @@ public class MergeAndConvert implements AutoCloseable {
         processorExecutor = buildProcessorExecutor();
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         try(MergeAndConvert mergeAndConvert = new MergeAndConvert()) {
             mergeAndConvert.fetchAndMergeTranslations();
         }catch (Exception e) {
            logger.error(e.getMessage(), e);
+           throw e;
         }
     }
 
