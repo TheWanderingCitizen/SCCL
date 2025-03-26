@@ -22,12 +22,16 @@ public class RestoreParatranzCache {
     //Paratranz Apibao包装类
     private static final ParatranzApi paratranzApi = ParatranzApi.INSTANCE;
 
-    private static final String CACHE_PATH = "cache/paratranz";
+    private static final String CACHE_DIR = "cache/paratranz";
     private static final String METADATA_FILE_NAME = "paratranz_files_metadata.info";
 
     public static void main(String[] args) throws Exception {
+        Path cacheDirPath = Path.of(CACHE_DIR);
+        if (!Files.isDirectory(cacheDirPath)){
+            Files.createDirectories(cacheDirPath);
+        }
         //读取缓存中的文件
-        Path metadataFilePath = Path.of(CACHE_PATH, METADATA_FILE_NAME);
+        Path metadataFilePath = Path.of(CACHE_DIR, METADATA_FILE_NAME);
         Map<String, PZFile> cachePzMap = new HashMap<>();
         if (Files.exists(metadataFilePath)){
             logger.info("读取paratranz缓存中");
@@ -51,7 +55,7 @@ public class RestoreParatranzCache {
             }else{
                 //将新内容写入旧文件
                 List<PZTranslation> pzTranslations = paratranzApi.fileTranslation(newPzFile.getId());
-                Files.writeString(Path.of(CACHE_PATH, newPzFile.getName()), ParatranzJacksonTools.om.writeValueAsString(pzTranslations));
+                Files.writeString(Path.of(CACHE_DIR, newPzFile.getName()), ParatranzJacksonTools.om.writeValueAsString(pzTranslations));
             }
         }
 
