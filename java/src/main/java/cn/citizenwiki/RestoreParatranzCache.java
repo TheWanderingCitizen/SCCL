@@ -68,13 +68,13 @@ public class RestoreParatranzCache {
         if (p1 == p2) {
             return true;
         }
+        //比较hash
         if (Objects.equals(p1.getHash(), p2.getHash())) {
             return true;
         }
-        if (Objects.equals(p1.getUpdatedAt(), p2.getUpdatedAt())) {
-            return true;
-        }
-        if (Objects.equals(p1.getModifiedAt(), p2.getModifiedAt())) {
+        //因为pz的hash可能为null，所以这里通过update和modified比较
+        if (Objects.equals(p1.getUpdatedAt(), p2.getUpdatedAt())
+            && Objects.equals(p1.getModifiedAt(), p2.getModifiedAt())) {
             return true;
         }
         return false;
