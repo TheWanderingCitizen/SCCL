@@ -53,7 +53,9 @@ public class RestoreParatranzCache {
                 //将新内容写入旧文件
                 List<PZTranslation> pzTranslations = paratranzApi.fileTranslation(newPzFile.getId());
                 Path newPzFilePath = Path.of(CACHE_DIR, newPzFile.getName());
-                Files.createDirectories(newPzFilePath);
+                if (!Files.isDirectory(newPzFilePath.getParent())){
+                    Files.createDirectories(newPzFilePath.getParent());
+                }
                 Files.writeString(newPzFilePath, ParatranzJacksonTools.om.writeValueAsString(pzTranslations));
             }
         }
