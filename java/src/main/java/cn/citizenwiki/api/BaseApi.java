@@ -76,7 +76,7 @@ public abstract class BaseApi {
     protected void handleHttpException(HttpRequest request, HttpResponse<InputStream> response) throws HttpException {
         String msg;
         try (InputStream is = response.body()) {
-            msg = new String(is.readAllBytes());
+            msg = String.format("http status code:[%d], body:[%s]", response.statusCode(), new String(is.readAllBytes()));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
