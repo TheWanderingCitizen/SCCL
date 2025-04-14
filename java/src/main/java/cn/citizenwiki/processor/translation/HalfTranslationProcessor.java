@@ -28,8 +28,7 @@ public class HalfTranslationProcessor extends CommonTranslationProcessor {
             , "AsteroidBase_"
             //行政机库
             , "ExecutiveHangar_"
-    })
-            .map(String::toLowerCase).toList();
+    }).toList();
 
     public HalfTranslationProcessor() {
         super(GithubConfig.HALF_BRANCH_NAME);
@@ -81,9 +80,7 @@ public class HalfTranslationProcessor extends CommonTranslationProcessor {
      */
     public static boolean needProcess(PZTranslation pzTranslation) {
         String keyLower = pzTranslation.getKey().toLowerCase();
-        return ((startWithWords.stream().anyMatch(pzTranslation.getKey()::startsWith)
-                || keyLower.contains("_repui")
-                || keyLower.endsWith("_from"))
+        return ((startWithWords.stream().anyMatch(pzTranslation.getKey()::startsWith) || keyLower.contains("_repui") || keyLower.endsWith("_from"))
                 && !keyLower.contains("desc")
                 //包含表达式的不能处理
                 && (!pzTranslation.getOriginal().contains("~") && !pzTranslation.getOriginal().contains("%")));
