@@ -112,6 +112,8 @@ public class SearchableLocationReplacer {
     private static final Pattern ASTEROIDCLUSTER_N_BASE_PYRO_ENCOUNTER_REGION_X = Pattern.compile("^AsteroidCluster_\\d+Base_Pyro_Encounter_Region[A-Za-z]+(_\\d{3})$");
     //焰联监控站匹配规则
     private static final Pattern AsteroidBase_P_N_L_N = Pattern.compile("^AsteroidBase_P\\d+_L\\d+$");
+    //焰联-行政机库匹配规则
+    private static final Pattern ExecutiveHangar_P_N_L_N = Pattern.compile("^ExecutiveHangar_P\\d+_L\\d+$");
 
 
     /**
@@ -129,7 +131,8 @@ public class SearchableLocationReplacer {
         Matcher dfmMc = DFM.matcher(key);
         Matcher abperMc = ASTEROIDCLUSTER_N_BASE_PYRO_ENCOUNTER_REGION_X.matcher(key);
         Matcher aplMc = AsteroidBase_P_N_L_N.matcher(key);
+        Matcher eplMc = ExecutiveHangar_P_N_L_N.matcher(key);
         return pyroMc.matches() || stantonMc.matches() || uiMc.matches() || rRMc.matches() || rrpMc.matches()
-                || dfmMc.matches() || abperMc.matches() || aplMc.matches();
+                || dfmMc.matches() || abperMc.matches() || aplMc.matches() || eplMc.matches();
     }
 }

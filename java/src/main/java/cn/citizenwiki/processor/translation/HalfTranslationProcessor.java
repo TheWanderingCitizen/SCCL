@@ -23,7 +23,13 @@ public class HalfTranslationProcessor extends CommonTranslationProcessor {
 
     // 定义规则
     private static final List<String> startWithWords = Arrays.stream(new String[]{"item_Name", "vehicle_Name", "Pyro_JumpPoint_", "Stanton", "Terra_JumpPoint",
-            "stanton2", "ui_pregame_port", "RR_", "Pyro", "mission_location", "mission_Item", "mission_client", "items_", "dfm_crusader"}).map(String::toLowerCase).toList();
+            "stanton2", "ui_pregame_port", "RR_", "Pyro", "mission_location", "mission_Item", "mission_client", "items_", "dfm_crusader"
+            //焰联
+            , "AsteroidBase_"
+            //行政机库
+            , "ExecutiveHangar_"
+    })
+            .map(String::toLowerCase).toList();
 
     public HalfTranslationProcessor() {
         super(GithubConfig.HALF_BRANCH_NAME);
@@ -75,7 +81,7 @@ public class HalfTranslationProcessor extends CommonTranslationProcessor {
      */
     public static boolean needProcess(PZTranslation pzTranslation) {
         String keyLower = pzTranslation.getKey().toLowerCase();
-        return ((startWithWords.stream().anyMatch(keyLower::startsWith)
+        return ((startWithWords.stream().anyMatch(pzTranslation.getKey()::startsWith)
                 || keyLower.contains("_repui")
                 || keyLower.endsWith("_from"))
                 && !keyLower.contains("desc")
