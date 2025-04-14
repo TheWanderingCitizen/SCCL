@@ -28,7 +28,8 @@ public class ParatranzJacksonTools {
         // 禁用时间戳格式（避免输出为时间戳）
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         JavaTimeModule javaTimeModule = new JavaTimeModule();
-        javaTimeModule.addSerializer(ZonedDateTime.class, new ZonedDateTimeSerializer(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+//        mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+//        javaTimeModule.addSerializer(ZonedDateTime.class, new ZonedDateTimeSerializer(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
         objectMapper.registerModule(javaTimeModule);
         om = objectMapper;
     }
