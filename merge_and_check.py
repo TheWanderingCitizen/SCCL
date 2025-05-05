@@ -87,6 +87,7 @@ def check_mission_consistency(data):
         if original_mismatches or translation_mismatches or number_mismatches or percentage_mismatches:
             inconsistencies.append({
                 'key': entry.get('key'),
+                'id': entry.get('id'),  # 确保将 'id' 从原始数据中传递
                 'original': entry.get('original', ''),
                 'translation': entry.get('translation', ''),
                 'original_mismatches': original_mismatches,
