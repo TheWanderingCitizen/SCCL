@@ -22,7 +22,7 @@ public class HalfTranslationProcessor extends CommonTranslationProcessor {
     private static final Logger logger = LoggerFactory.getLogger(HalfTranslationProcessor.class);
 
     // 定义规则
-    private static final List<String> startWithWords = Arrays.stream(new String[]{"item_Name", "vehicle_Name", "Pyro_JumpPoint_", "Stanton", "Terra_JumpPoint",
+    private static final List<String> startWithWords = Arrays.stream(new String[]{"item_Name", "vehicle_Name", "vehicle_name", "Pyro_JumpPoint_", "Stanton", "Terra_JumpPoint",
             "stanton2", "ui_pregame_port", "RR_", "Pyro", "mission_location", "mission_Item", "mission_client", "items_", "dfm_crusader"
             //焰联
             , "AsteroidBase_"
