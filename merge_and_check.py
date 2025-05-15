@@ -87,6 +87,7 @@ def check_mission_consistency(data):
         if original_mismatches or translation_mismatches or number_mismatches or percentage_mismatches:
             inconsistencies.append({
                 'key': entry.get('key'),
+                'id': entry.get('id'),  # 确保将 'id' 从原始数据中传递
                 'original': entry.get('original', ''),
                 'translation': entry.get('translation', ''),
                 'original_mismatches': original_mismatches,
@@ -127,6 +128,28 @@ def check_item_types(data):
 
     return inconsistencies
 
+def batch_update_stage(failed_ids, stage=2):
+    """
+    批量更新词条的 stage。
+    :param failed_ids: 未通过检查的词条 ID 列表
+    :param stage: 要设置的 stage 值，默认为 2
+    """
+    project_id = 8340
+    headers = {
+        'Authorization': f"{os.getenv('AUTHORIZATION')}",
+        'Content-Type': 'application/json'
+    }
+
+    # 批量更新 stage
+    update_url = f"https://paratranz.cn/api/projects/{project_id}/strings"
+    update_payload = {
+        "op": "update",
+        "id": failed_ids,
+        "stage": stage
+    }
+    response = requests.put(update_url, headers=headers, json=update_payload)
+    response.raise_for_status()
+    print(f"成功更新 {len(failed_ids)} 个词条的 stage 为 {stage}。")
 
 def main():
     is_error = False
@@ -153,12 +176,18 @@ def main():
 
     if inconsistencies:
         filtered_inconsistencies = []
+        failed_entries = []  # 用于存储未通过检查的词条，包括 key 和 id
         for inconsistency in inconsistencies:
             if inconsistency['original_mismatches'] or inconsistency['translation_mismatches']:
                 filtered_inconsistencies.append(inconsistency)
+                failed_entries.append({
+                    'key': inconsistency['key'],  # 存储 key
+                    'id': inconsistency['id']    # 存储 id
+                })
 
         print(f"发现 {len(filtered_inconsistencies)} 个格式不一致项：")
         for inconsistency in filtered_inconsistencies:
+            print(f"ID: {inconsistency['id']}")
             print(f"Key: {inconsistency['key']}")
             print(f"Original: {inconsistency['original']}")
             print(f"Translation: {inconsistency['translation']}")
@@ -169,6 +198,14 @@ def main():
         save_to_json(filtered_inconsistencies, 'inconsistencies.json')
         is_error = True
         print("不一致的结果已保存到 inconsistencies.json 文件。")
+
+        # 批量更新未通过检查的词条
+        if failed_entries:
+            failed_ids = [entry['id'] for entry in failed_entries]  # 提取 id 列表
+            batch_update_stage(
+                failed_ids,
+                stage=2
+            )
     else:
         print("所有格式内容一致，无不一致项。")
 
