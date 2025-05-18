@@ -87,8 +87,9 @@ public class ParatranzCache {
             return true;
         }
         //比较hash
-        if (Objects.equals(p1.getHash(), p2.getHash())) {
-            return true;
+        //update pz hash在修改后并未变化，不靠谱，改为采用modifiedat比较
+        if (!Objects.equals(p1.getHash(), p2.getHash())) {
+            return false;
         }
         //因为pz的hash可能为null，所以这里通过update和modified比较
         if (Objects.equals(p1.getUpdatedAt(), p2.getUpdatedAt())
