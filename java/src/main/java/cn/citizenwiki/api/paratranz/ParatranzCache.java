@@ -55,7 +55,10 @@ public class ParatranzCache {
         for (PZFile newPzFile : newPzFiles) {
             PZFile cachePzFile = cachePzMap.get(newPzFile.getName());
             if (isSame(cachePzFile, newPzFile)) {
-                logger.info("【{}】命中缓存", newPzFile.getName());
+                logger.info("【{}】命中缓存，old:【{}】 new：【{}】", newPzFile.getName()
+                        , ParatranzJacksonTools.om.writeValueAsString(cachePzFile)
+                        , ParatranzJacksonTools.om.writeValueAsString(newPzFile)
+                );
             } else {
                 logger.info("【{}】未命中缓存，从api拉取中...", newPzFile.getName());
                 //将新内容写入旧文件
