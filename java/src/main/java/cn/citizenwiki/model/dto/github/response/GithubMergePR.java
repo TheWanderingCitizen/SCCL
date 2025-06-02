@@ -7,7 +7,8 @@ public class GithubMergePR {
     private String message;        // 合并消息（如："Merge made by the 'rebase' strategy."）
 
     // 默认构造函数
-    public GithubMergePR() {}
+    public GithubMergePR() {
+    }
 
     // 带参数的构造函数
     public GithubMergePR(String sha, boolean merged, String message) {
@@ -45,9 +46,9 @@ public class GithubMergePR {
     @Override
     public String toString() {
         return "MergePRResponse{" +
-               "sha='" + sha + '\'' +
-               ", merged=" + merged +
-               ", message='" + message + '\'' +
-               '}';
+                "sha='" + sha + '\'' +
+                ", merged=" + merged +
+                ", message='" + message + '\'' +
+                '}';
     }
 }

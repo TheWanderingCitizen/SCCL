@@ -11,6 +11,8 @@ import java.util.LinkedHashMap;
 
 public class GlobalIniUtil {
 
+    public static final byte SPACE_BYTE = (byte) 0xA0;
+    public static final byte NO_BREAK_BYTE = (byte) 0xC2;
     private static final Logger logger = LoggerFactory.getLogger(GlobalIniUtil.class);
 
     public static LinkedHashMap<String, String> convertIniToMap(Path path) {
@@ -40,9 +42,6 @@ public class GlobalIniUtil {
         });
         return iniMap;
     }
-
-    public static final byte SPACE_BYTE = (byte)0xA0;
-    public static final byte NO_BREAK_BYTE = (byte)0xC2;
 
     /**
      * 跳过bom。并将0XA0替换为no-break space

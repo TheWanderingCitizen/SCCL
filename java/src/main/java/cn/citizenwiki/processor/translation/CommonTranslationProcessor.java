@@ -34,6 +34,8 @@ import java.util.Objects;
  */
 public abstract class CommonTranslationProcessor implements TranslationProcessor {
 
+    public static final String TEMP_BRANCH_PREFIX = "temp";
+    public static final String TEMP_BRANCH_SEPARATOR = "_";
     //github对应版本分支
     protected final String BRANCH_NAME;
     //文件输出的本地目录
@@ -42,15 +44,14 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
     protected final String OUTPUT_PATH;
     //要拉去以及提交的git仓库url（非scbox）
     protected final String GIT_REMOTE;
+    protected final S3Api s3Api = S3Api.INSTANCE;
+    //用于生成临时分支
+    protected final ZonedDateTime startTime = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"));
+    private final GithubApi githubApi = GithubApi.INSTANCE;
     //输出文件的outputstream
     private BufferedWriter bw;
     //jgit,用于拉取推送代码
     private Git git;
-    private final GithubApi githubApi = GithubApi.INSTANCE;
-    protected final S3Api s3Api = S3Api.INSTANCE;
-    //用于生成临时分支
-    protected final ZonedDateTime startTime = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"));
-
     private volatile String tempBranchName;
 
     public CommonTranslationProcessor(String branchName) {
@@ -134,7 +135,6 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
         }
     }
 
-
     /**
      * 子类根据版本号是否需要推送，与开关共同决定
      *
@@ -202,9 +202,6 @@ public abstract class CommonTranslationProcessor implements TranslationProcessor
             throw new RuntimeException(e);
         }
     }
-
-    public static final String TEMP_BRANCH_PREFIX = "temp";
-    public static final String TEMP_BRANCH_SEPARATOR = "_";
 
     /**
      * 获取临时分支名称

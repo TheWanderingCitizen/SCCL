@@ -28,15 +28,15 @@ public enum HttpStatus {
         return null; // 或抛出异常，如 IllegalArgumentException
     }
 
+    public static boolean isSuccessful(int statusCode) {
+        return statusCode >= 200 && statusCode < 300;
+    }
+
     public int getCode() {
         return code;
     }
 
     public String getMessage() {
         return message;
-    }
-
-    public static boolean isSuccessful(int statusCode) {
-        return statusCode >= 200 && statusCode < 300;
     }
 }

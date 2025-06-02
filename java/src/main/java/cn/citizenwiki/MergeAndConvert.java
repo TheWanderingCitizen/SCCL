@@ -67,6 +67,47 @@ public class MergeAndConvert implements AutoCloseable {
         }
     }
 
+    private static void cloneScboxLocalization() {
+        logger.info("开始克隆盒子仓库，此步时间较长请耐心等待...");
+        try (Git git = Git.cloneRepository()
+                .setURI("https://github.com/" + GithubConfig.INSTANCE.getTargetOwner() + "/" + GithubConfig.INSTANCE.getTargetRepo())
+                .setDirectory(new File(GithubConfig.ORIGIN_DIR))
+                .setCloneAllBranches(true)
+                .call()) {
+            Collection<Ref> branches = git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
+            //删除无用temp分支
+            deleteTempBranch(branches, git);
+        } catch (GitAPIException e) {
+            logger.info("克隆盒子仓库异常", e);
+            throw new RuntimeException(e);
+        }
+        logger.info("盒子仓库已克隆");
+    }
+
+    private static void deleteTempBranch(Collection<Ref> branches, Git git) throws GitAPIException {
+        List<RefSpec> refSpecs = new ArrayList<>(branches.size());
+        for (Ref branch : branches) {
+            String branchName = branch.getName();
+            if (branchName.startsWith("refs/remotes/origin/temp")) {
+                String remoteBranchName = branchName.replace("refs/remotes/origin/", "");
+                logger.info("检测到临时分支[{}],将被删除", remoteBranchName);
+                git.checkout().setName(branchName).call();
+                git.checkout().setName("main").call();
+                git.branchDelete().setBranchNames(remoteBranchName).call();
+                // 推送删除远程分支
+                RefSpec refSpec = new RefSpec()
+                        .setSource(null)
+                        .setDestination("refs/heads/" + remoteBranchName);
+                refSpecs.add(refSpec);
+            }
+        }
+        if (!refSpecs.isEmpty()) {
+            git.push().setCredentialsProvider(JGitConfig.CREDENTIALS_PROVIDER)
+                    .setRefSpecs(refSpecs.toArray(new RefSpec[refSpecs.size()]))
+                    .call();
+        }
+    }
+
     /**
      * 合并 Paratranz 上的所有汉化文件,并调用translationProcessors进行处理
      */
@@ -126,47 +167,6 @@ public class MergeAndConvert implements AutoCloseable {
             CompletableFuture.allOf(futures).get();
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    private static void cloneScboxLocalization() {
-        logger.info("开始克隆盒子仓库，此步时间较长请耐心等待...");
-        try (Git git = Git.cloneRepository()
-                .setURI("https://github.com/" + GithubConfig.INSTANCE.getTargetOwner() + "/" + GithubConfig.INSTANCE.getTargetRepo())
-                .setDirectory(new File(GithubConfig.ORIGIN_DIR))
-                .setCloneAllBranches(true)
-                .call()) {
-            Collection<Ref> branches = git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
-            //删除无用temp分支
-            deleteTempBranch(branches, git);
-        } catch (GitAPIException e) {
-            logger.info("克隆盒子仓库异常", e);
-            throw new RuntimeException(e);
-        }
-        logger.info("盒子仓库已克隆");
-    }
-
-    private static void deleteTempBranch(Collection<Ref> branches, Git git) throws GitAPIException {
-        List<RefSpec> refSpecs = new ArrayList<>(branches.size());
-        for (Ref branch : branches) {
-            String branchName = branch.getName();
-            if (branchName.startsWith("refs/remotes/origin/temp")) {
-                String remoteBranchName = branchName.replace("refs/remotes/origin/", "");
-                logger.info("检测到临时分支[{}],将被删除", remoteBranchName);
-                git.checkout().setName(branchName).call();
-                git.checkout().setName("main").call();
-                git.branchDelete().setBranchNames(remoteBranchName).call();
-                // 推送删除远程分支
-                RefSpec refSpec = new RefSpec()
-                        .setSource(null)
-                        .setDestination("refs/heads/" + remoteBranchName);
-                refSpecs.add(refSpec);
-            }
-        }
-        if (!refSpecs.isEmpty()) {
-            git.push().setCredentialsProvider(JGitConfig.CREDENTIALS_PROVIDER)
-                    .setRefSpecs(refSpecs.toArray(new RefSpec[refSpecs.size()]))
-                    .call();
         }
     }
 

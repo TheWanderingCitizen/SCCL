@@ -16,10 +16,6 @@ public class GithubLinks {
         return self;
     }
 
-    public void setSelf(Link self) {
-        this.self = self;
-    }
-
     public Link getHtml() {
         return html;
     }
@@ -30,6 +26,10 @@ public class GithubLinks {
 
     public Link getSelf() {
         return self;
+    }
+
+    public void setSelf(Link self) {
+        this.self = self;
     }
 
     public Link getIssue() {

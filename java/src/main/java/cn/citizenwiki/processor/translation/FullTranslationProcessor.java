@@ -98,7 +98,7 @@ public class FullTranslationProcessor extends CommonTranslationProcessor {
         super.publish(lastFileVersion);
         // 推送zip压缩到存储桶
         String bucketPath = S3Config.ZIP_FILE_NAME;
-        getLogger().info("开始上传压缩文件[{}]至存储桶[{}]",COMPRESS_FILE_PATH , bucketPath);
+        getLogger().info("开始上传压缩文件[{}]至存储桶[{}]", COMPRESS_FILE_PATH, bucketPath);
         PutObjectResponse putObjectResponse = super.s3Api.putObject(bucketPath, COMPRESS_FILE_PATH);
         getLogger().info("上传压缩文件[{}]至存储桶[{}]结果[{}]", COMPRESS_FILE_PATH, bucketPath, putObjectResponse);
 

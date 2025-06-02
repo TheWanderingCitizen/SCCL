@@ -1,0 +1,30 @@
+#双语汉化规则配置
+key: # 键匹配规则
+  match_rules: # 规则对象，所有的规则对象结构都相同，支持导入
+    imports:
+      - '规则/双语半汉化共用-key.yaml'
+original: # 原文匹配规则，上述
+  match_rules:
+    imports:
+      - '规则/排除表达式-原文.yaml'
+translation:
+  match_rules:
+    exclude:
+      contains:
+        - '['
+ext: # 扩展规则，用于提供给需要特殊处理的汉化
+  joined_with_brackets: # 双语拼接中文位置的规则，符合下面规则的会用中括号拼接，不符合的会用换行拼接
+    match_rules:
+      imports:
+        - '规则/可搜索地点-key.yaml'
+      include:
+        regex:
+          - '^item_Name.*S\d{2}.*$'
+          - '^item.*S\d.*$'
+          - '(?=.*Stanton)(?=.*_).*'
+        contains:
+          - 'mission_location'
+          - 'mission_contractor'
+      exclude:
+        contains:
+          - '['

@@ -1,0 +1,41 @@
+match_rules:
+  include: # 包含以下规则的key会进行处理
+    regex: [ ] # 正则表达式，若无规则，则为 [ ]，如果需要添加规则，则与其它属性相同
+    start_with: # 以...开头
+      - 'item_Name'
+      - 'vehicle_Name'
+      - 'vehicle_name'
+      - 'Pyro_JumpPoint_'
+      - 'Stanton'
+      - 'Terra_JumpPoint'
+      - 'stanton2'
+      - 'ui_pregame_port'
+      - 'RR_'
+      - 'Pyro'
+      - 'mission_location'
+      - 'mission_Item'
+      - 'mission_client'
+      - 'items_'
+      - 'dfm_crusader'
+      - 'AsteroidBase_'
+      - 'ExecutiveHangar_'
+    start_with_ignore_case: [ ] # 以...开头（忽略大小写）
+    end_with: [ ] # 以...结尾
+    end_with_ignore_case: # 以...结尾（忽略大小写）
+      - '_from'
+    eq: [ ] # 完全匹配（直接将想匹配的key复制过来）
+    eq_ignore_case: [ ] # 完全匹配（忽略大小写）
+    contains: [ ] # 包含...
+    contains_ignore_case: # 包含...（忽略大小写）
+      - '_repui'
+  exclude: # 符合以下规则的key会被排除掉不处理,属性及其含义与include一样
+    regex: [ ]
+    start_with: [ ]
+    start_with_ignore_case: [ ]
+    end_with: [ ]
+    end_with_ignore_case: [ ]
+    eq: [ ]
+    eq_ignore_case: [ ]
+    contains: [ ]
+    contains_ignore_case:
+      - 'desc'

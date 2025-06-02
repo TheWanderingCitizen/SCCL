@@ -1,0 +1,6 @@
+match_rules:
+  exclude:
+    regex:
+      - '.*~mission\([^)]+\).*'
+    contains:
+      - '%'

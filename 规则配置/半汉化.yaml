@@ -1,0 +1,8 @@
+key:
+  match_rules:
+    imports:
+      - '规则/双语半汉化共用-key.yaml'
+original:
+  match_rules:
+    imports:
+      - '规则/排除表达式-原文.yaml'

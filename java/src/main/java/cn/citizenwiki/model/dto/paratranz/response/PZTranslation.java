@@ -87,6 +87,6 @@ public class PZTranslation implements Cloneable {
 
     @Override
     public PZTranslation clone() throws CloneNotSupportedException {
-        return (PZTranslation)super.clone();
+        return (PZTranslation) super.clone();
     }
 }

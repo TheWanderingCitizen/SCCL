@@ -7,6 +7,7 @@ public interface BaseProcessor {
 
     /**
      * 获取处理器的名称，用于日志等场景
+     *
      * @return
      */
     String getProcessorName();

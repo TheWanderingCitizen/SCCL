@@ -15,9 +15,12 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 public class GithubJacksonTools {
 
     public static final ObjectMapper om;
-    public static final TypeReference<GithubPulls> PULL = new TypeReference<>() {};
-    public static final TypeReference<GitHubContents> CONTENT = new TypeReference<>() {};
-    public static final TypeReference<GithubMergePR> MERGE_PR = new TypeReference<>() {};
+    public static final TypeReference<GithubPulls> PULL = new TypeReference<>() {
+    };
+    public static final TypeReference<GitHubContents> CONTENT = new TypeReference<>() {
+    };
+    public static final TypeReference<GithubMergePR> MERGE_PR = new TypeReference<>() {
+    };
 
     static {
         ObjectMapper objectMapper = new ObjectMapper();

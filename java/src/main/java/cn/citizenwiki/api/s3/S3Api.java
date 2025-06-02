@@ -31,7 +31,7 @@ public class S3Api {
                 .build();
     }
 
-    public PutObjectResponse putObject(String r2path, Path path){
+    public PutObjectResponse putObject(String r2path, Path path) {
         // 构造 PutObjectRequest
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(this.config.getBucketName())
@@ -40,10 +40,6 @@ public class S3Api {
 
         // 上传文件
         return this.s3Client.putObject(putObjectRequest, RequestBody.fromFile(path));
-    }
-
-    public static void main(String[] args) {
-
     }
 
 }

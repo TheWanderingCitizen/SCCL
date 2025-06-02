@@ -1,4 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
@@ -11,19 +11,37 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>23</maven.compiler.source>
-        <maven.compiler.target>23</maven.compiler.target>
+        <java.version>24</java.version>
+        <maven.compiler.source>24</maven.compiler.source>
+        <maven.compiler.target>24</maven.compiler.target>
         <jackson.version>2.18.1</jackson.version>
         <jgit.version>7.0.0.202409031743-r</jgit.version>
         <slf4j.version>1.7.36</slf4j.version>
         <log4j.version>2.24.1</log4j.version>
         <awssdk.version>2.29.6</awssdk.version>
-        <snakeyaml.version>2.3</snakeyaml.version>
-        <junit.jupiter.version>5.11.3</junit.jupiter.version>
+        <junit.jupiter.version>5.11.4</junit.jupiter.version>
         <pinyin.version>0.4.0</pinyin.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <mockito.version>5.18.0</mockito.version>
     </properties>
 
     <dependencies>
+        <!--mapstruct-->
+        <!-- MapStruct 依赖 -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${mapstruct.version}</version>
+        </dependency>
+
+        <!-- MapStruct 处理器 -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+            <version>${mapstruct.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- jackson -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -36,6 +54,12 @@
             <artifactId>jackson-datatype-jsr310</artifactId>
             <version>${jackson.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/org.eclipse.jgit/org.eclipse.jgit -->
         <!-- jgit -->
         <dependency>
@@ -89,12 +113,6 @@
             <artifactId>url-connection-client</artifactId>
             <version>${awssdk.version}</version>
         </dependency>
-        <!--yaml解析-->
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>${snakeyaml.version}</version>
-        </dependency>
         <!-- JUnit 5依赖 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -108,6 +126,23 @@
             <version>${junit.jupiter.version}</version>
             <scope>test</scope>
         </dependency>
+        <!--mockito依赖-->
+        <!-- Mockito Core -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Mockito JUnit Jupiter 扩展 -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <!--拼音库-->
         <dependency>
             <groupId>com.github.houbb</groupId>
@@ -123,6 +158,23 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <!-- MapStruct 注解处理器路径 -->
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <!-- 编译参数 -->
+                    <compilerArgs>
+                        <arg>-Amapstruct.defaultComponentModel=default</arg>
+                        <arg>-Amapstruct.suppressGeneratorTimestamp=true</arg>
+                        <arg>-Amapstruct.suppressGeneratorVersionInfoComment=true</arg>
+                    </compilerArgs>
+                </configuration>
+
             </plugin>
         </plugins>
     </build>

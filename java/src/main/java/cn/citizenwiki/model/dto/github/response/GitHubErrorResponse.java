@@ -10,7 +10,8 @@ public class GitHubErrorResponse {
     private String status;              // HTTP 状态码
 
     // 默认构造函数
-    public GitHubErrorResponse() {}
+    public GitHubErrorResponse() {
+    }
 
     // 带参数的构造函数
     public GitHubErrorResponse(String message, List<Error> errors, String documentationUrl, String status) {
@@ -57,11 +58,11 @@ public class GitHubErrorResponse {
     @Override
     public String toString() {
         return "GitHubErrorResponse{" +
-               "message='" + message + '\'' +
-               ", errors=" + errors +
-               ", documentationUrl='" + documentationUrl + '\'' +
-               ", status='" + status + '\'' +
-               '}';
+                "message='" + message + '\'' +
+                ", errors=" + errors +
+                ", documentationUrl='" + documentationUrl + '\'' +
+                ", status='" + status + '\'' +
+                '}';
     }
 
     // 内部类，封装 errors 数组中的每个错误对象
@@ -71,7 +72,8 @@ public class GitHubErrorResponse {
         private String message;   // 错误消息
 
         // 默认构造函数
-        public Error() {}
+        public Error() {
+        }
 
         // 带参数的构造函数
         public Error(String resource, String code, String message) {
@@ -109,10 +111,10 @@ public class GitHubErrorResponse {
         @Override
         public String toString() {
             return "Error{" +
-                   "resource='" + resource + '\'' +
-                   ", code='" + code + '\'' +
-                   ", message='" + message + '\'' +
-                   '}';
+                    "resource='" + resource + '\'' +
+                    ", code='" + code + '\'' +
+                    ", message='" + message + '\'' +
+                    '}';
         }
     }
 }

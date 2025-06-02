@@ -1,13 +1,10 @@
 package cn.citizenwiki.utils;
 
-import com.github.houbb.pinyin.bs.PinyinBs;
 import com.github.houbb.pinyin.constant.enums.PinyinStyleEnum;
 import com.github.houbb.pinyin.util.PinyinHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.StringJoiner;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PinYinUtil {

@@ -3,6 +3,10 @@ package cn.citizenwiki.processor.translation;
 
 import cn.citizenwiki.api.github.GithubConfig;
 import cn.citizenwiki.api.s3.S3Config;
+import cn.citizenwiki.config.GlobalConfig;
+import cn.citizenwiki.match.TranslationRuleProcessor;
+import cn.citizenwiki.match.rule.ConfigProvider;
+import cn.citizenwiki.model.config.TranslationRuleConfigBean;
 import cn.citizenwiki.model.dto.FileVersion;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.utils.SearchableLocationReplacer;
@@ -21,11 +25,42 @@ public class SearchableTranslationProcessor extends CommonTranslationProcessor {
     private static final Logger logger = LoggerFactory.getLogger(SearchableTranslationProcessor.class);
 
     private SearchableLocationReplacer searchableLocationReplacer;
+    private static final String MATCH_RULE_CONFIG_FILE_NAME = "地点双语.yaml";
 
-    // 定义规则
+    private final TranslationRuleProcessor ruleProcessor;
 
+    /**
+     * 默认构造函数
+     * 使用默认的配置文件路径和全局配置提供者
+     */
     public SearchableTranslationProcessor() {
+        this(MATCH_RULE_CONFIG_FILE_NAME, GlobalConfig.MatcherRulesConfig::getMatcherRule);
+    }
+
+    /**
+     * 支持自定义配置的构造函数
+     *
+     * @param configFileName 配置文件路径
+     * @param configProvider 配置提供者，用于获取导入的规则文件
+     */
+    public SearchableTranslationProcessor(String configFileName, ConfigProvider<TranslationRuleConfigBean> configProvider) {
         super(GithubConfig.SEARCH_BRANCH_NAME);
+
+        try {
+            // 加载主配置文件
+            TranslationRuleConfigBean translationRuleConfigBean = configProvider.getConfig(configFileName);
+
+            // 创建规则处理器，支持imports机制
+            this.ruleProcessor = TranslationRuleProcessor.fromTranslationRuleConfig(
+                    translationRuleConfigBean
+                    , GlobalConfig.MatcherRulesConfig::getMatchRulesConfig);
+
+            logger.info("{}初始化完成", MATCH_RULE_CONFIG_FILE_NAME);
+        } catch (Exception e) {
+            String msg = String.format("%s初始化失败：%s", MATCH_RULE_CONFIG_FILE_NAME, e.getMessage());
+            logger.error(msg, e);
+            throw new RuntimeException(msg, e);
+        }
     }
 
     @Override
@@ -50,7 +85,7 @@ public class SearchableTranslationProcessor extends CommonTranslationProcessor {
         //写入文件
         if (bw != null) {
             String translation = pzTranslation.getTranslation();
-            if(SearchableLocationReplacer.isSearchableKey(pzTranslation.getKey())){
+            if (ruleProcessor.isMatch(pzTranslation.getKey(), pzTranslation.getOriginal(), translation)) {
                 translation = translation.replace(translation, translation + "[" + pzTranslation.getOriginal() + "]");
             }
             translation = searchableLocationReplacer.replace(pzTranslation.getKey(), translation);

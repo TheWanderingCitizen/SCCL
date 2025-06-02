@@ -1,0 +1,4 @@
+key:
+  match_rules:
+    imports:
+      - '规则/可搜索地点-key.yaml'

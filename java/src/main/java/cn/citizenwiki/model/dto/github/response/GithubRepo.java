@@ -169,10 +169,6 @@ public class GithubRepo {
         return fork;
     }
 
-    public void setFork(Boolean fork) {
-        this.fork = fork;
-    }
-
     public String getUrl() {
         return url;
     }
@@ -577,10 +573,6 @@ public class GithubRepo {
         return isTemplate;
     }
 
-    public void setTemplate(Boolean template) {
-        isTemplate = template;
-    }
-
     public List<String> getTopics() {
         return topics;
     }
@@ -593,56 +585,28 @@ public class GithubRepo {
         return hasIssues;
     }
 
-    public void setHasIssues(Boolean hasIssues) {
-        this.hasIssues = hasIssues;
-    }
-
     public Boolean isHasProjects() {
         return hasProjects;
-    }
-
-    public void setHasProjects(Boolean hasProjects) {
-        this.hasProjects = hasProjects;
     }
 
     public Boolean isHasWiki() {
         return hasWiki;
     }
 
-    public void setHasWiki(Boolean hasWiki) {
-        this.hasWiki = hasWiki;
-    }
-
     public Boolean isHasPages() {
         return hasPages;
-    }
-
-    public void setHasPages(Boolean hasPages) {
-        this.hasPages = hasPages;
     }
 
     public Boolean isHasDownloads() {
         return hasDownloads;
     }
 
-    public void setHasDownloads(Boolean hasDownloads) {
-        this.hasDownloads = hasDownloads;
-    }
-
     public Boolean isArchived() {
         return archived;
     }
 
-    public void setArchived(Boolean archived) {
-        this.archived = archived;
-    }
-
     public Boolean isDisabled() {
         return disabled;
-    }
-
-    public void setDisabled(Boolean disabled) {
-        this.disabled = disabled;
     }
 
     public String getVisibility() {
@@ -689,10 +653,6 @@ public class GithubRepo {
         return allowRebaseMerge;
     }
 
-    public void setAllowRebaseMerge(Boolean allowRebaseMerge) {
-        this.allowRebaseMerge = allowRebaseMerge;
-    }
-
     public Object getTemplateRepository() {
         return templateRepository;
     }
@@ -713,32 +673,16 @@ public class GithubRepo {
         return allowSquashMerge;
     }
 
-    public void setAllowSquashMerge(Boolean allowSquashMerge) {
-        this.allowSquashMerge = allowSquashMerge;
-    }
-
     public Boolean isAllowAutoMerge() {
         return allowAutoMerge;
-    }
-
-    public void setAllowAutoMerge(Boolean allowAutoMerge) {
-        this.allowAutoMerge = allowAutoMerge;
     }
 
     public Boolean isDeleteBranchOnMerge() {
         return deleteBranchOnMerge;
     }
 
-    public void setDeleteBranchOnMerge(Boolean deleteBranchOnMerge) {
-        this.deleteBranchOnMerge = deleteBranchOnMerge;
-    }
-
     public Boolean isAllowMergeCommit() {
         return allowMergeCommit;
-    }
-
-    public void setAllowMergeCommit(Boolean allowMergeCommit) {
-        this.allowMergeCommit = allowMergeCommit;
     }
 
     public Integer getSubscribersCount() {
@@ -793,28 +737,56 @@ public class GithubRepo {
         return fork;
     }
 
+    public void setFork(Boolean fork) {
+        this.fork = fork;
+    }
+
     public Boolean getTemplate() {
         return isTemplate;
+    }
+
+    public void setTemplate(Boolean template) {
+        isTemplate = template;
     }
 
     public Boolean getHasIssues() {
         return hasIssues;
     }
 
+    public void setHasIssues(Boolean hasIssues) {
+        this.hasIssues = hasIssues;
+    }
+
     public Boolean getHasProjects() {
         return hasProjects;
+    }
+
+    public void setHasProjects(Boolean hasProjects) {
+        this.hasProjects = hasProjects;
     }
 
     public Boolean getHasWiki() {
         return hasWiki;
     }
 
+    public void setHasWiki(Boolean hasWiki) {
+        this.hasWiki = hasWiki;
+    }
+
     public Boolean getHasPages() {
         return hasPages;
     }
 
+    public void setHasPages(Boolean hasPages) {
+        this.hasPages = hasPages;
+    }
+
     public Boolean getHasDownloads() {
         return hasDownloads;
+    }
+
+    public void setHasDownloads(Boolean hasDownloads) {
+        this.hasDownloads = hasDownloads;
     }
 
     public Boolean getHasDiscussions() {
@@ -829,28 +801,56 @@ public class GithubRepo {
         return archived;
     }
 
+    public void setArchived(Boolean archived) {
+        this.archived = archived;
+    }
+
     public Boolean getDisabled() {
         return disabled;
+    }
+
+    public void setDisabled(Boolean disabled) {
+        this.disabled = disabled;
     }
 
     public Boolean getAllowRebaseMerge() {
         return allowRebaseMerge;
     }
 
+    public void setAllowRebaseMerge(Boolean allowRebaseMerge) {
+        this.allowRebaseMerge = allowRebaseMerge;
+    }
+
     public Boolean getAllowSquashMerge() {
         return allowSquashMerge;
+    }
+
+    public void setAllowSquashMerge(Boolean allowSquashMerge) {
+        this.allowSquashMerge = allowSquashMerge;
     }
 
     public Boolean getAllowAutoMerge() {
         return allowAutoMerge;
     }
 
+    public void setAllowAutoMerge(Boolean allowAutoMerge) {
+        this.allowAutoMerge = allowAutoMerge;
+    }
+
     public Boolean getDeleteBranchOnMerge() {
         return deleteBranchOnMerge;
     }
 
+    public void setDeleteBranchOnMerge(Boolean deleteBranchOnMerge) {
+        this.deleteBranchOnMerge = deleteBranchOnMerge;
+    }
+
     public Boolean getAllowMergeCommit() {
         return allowMergeCommit;
+    }
+
+    public void setAllowMergeCommit(Boolean allowMergeCommit) {
+        this.allowMergeCommit = allowMergeCommit;
     }
 
     public Boolean getAllowForking() {

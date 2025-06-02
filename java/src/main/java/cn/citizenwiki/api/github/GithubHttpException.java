@@ -11,7 +11,7 @@ public class GithubHttpException extends HttpException {
         super(msg, e.getRequest(), e.getResponse());
         try {
             this.gitHubErrorResponse = GithubJacksonTools.om.readValue(e.getMessage(), GitHubErrorResponse.class);
-        }catch (Exception ge){
+        } catch (Exception ge) {
 
         }
 

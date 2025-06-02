@@ -33,7 +33,7 @@ public class FileVersion implements Comparable<FileVersion> {
             this.version = Long.parseLong(subVersion);
             try {
                 this.profile = Profile.valueOf(scProfile.strip().toUpperCase());
-            }catch (Exception e) {
+            } catch (Exception e) {
                 //如果不合法，则默认为最低版本
                 this.profile = Profile.values()[0];
             }
@@ -43,12 +43,21 @@ public class FileVersion implements Comparable<FileVersion> {
     }
 
     /**
-     * 枚举顺序代表版本新旧顺序，不可随意变换顺序，越往下越新
+     * 将字符串截取至第一个非数字字符
+     *
+     * @param input
+     * @return
      */
-    public enum Profile {
-        EPTU,
-        PTU,
-        LIVE,
+    public static String substringUntilFirstNonDigit(String input) {
+        int index = 0;
+
+        // 查找第一个不是数字的字符
+        while (index < input.length() && Character.isDigit(input.charAt(index))) {
+            index++;
+        }
+
+        // 返回截取的字符串
+        return input.length() - 1 == index ? input : input.substring(0, index);
     }
 
     @Override
@@ -87,24 +96,6 @@ public class FileVersion implements Comparable<FileVersion> {
         return Long.compare(this.id, o.id);
     }
 
-    /**
-     * 将字符串截取至第一个非数字字符
-     *
-     * @param input
-     * @return
-     */
-    public static String substringUntilFirstNonDigit(String input) {
-        int index = 0;
-
-        // 查找第一个不是数字的字符
-        while (index < input.length() && Character.isDigit(input.charAt(index))) {
-            index++;
-        }
-
-        // 返回截取的字符串
-        return input.length() - 1 == index ? input : input.substring(0, index);
-    }
-
     public int getFirst() {
         return first;
     }
@@ -131,5 +122,14 @@ public class FileVersion implements Comparable<FileVersion> {
 
     public String getName() {
         return name;
+    }
+
+    /**
+     * 枚举顺序代表版本新旧顺序，不可随意变换顺序，越往下越新
+     */
+    public enum Profile {
+        EPTU,
+        PTU,
+        LIVE,
     }
 }

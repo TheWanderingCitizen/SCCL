@@ -22,18 +22,16 @@ public class GithubConfig {
     public static final String PINYIN_BRANCH_NAME = "cn_pinyin";
     //拉取盒子仓库存放的本地目录
     public static final String ORIGIN_DIR = "scbox_origin";
-
+    public static final String BASE_API_URL = "https://api.github.com";
+    //汉化文件夹名称
+    public static final String CN_DIR = "chinese_(simplified)";
+    public static final String CN_GLOBAL_INI_PATH = CN_DIR + "/global.ini";
     //fork仓库的名称
     private final String forkRepo;
     //目标仓库名
     private final String targetRepo = "LocalizationData";
     //github token,用于git操作
-    private final String token ; //
-
-    public static final String BASE_API_URL = "https://api.github.com";
-    //汉化文件夹名称
-    public static final String CN_DIR = "chinese_(simplified)";
-    public static final String CN_GLOBAL_INI_PATH = CN_DIR + "/global.ini";
+    private final String token; //
     //fork仓库的用户名
     private final String forkOwner;
     //目标仓库用户名

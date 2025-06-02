@@ -8,6 +8,6 @@ import cn.citizenwiki.api.paratranz.ParatranzCache;
 public class RestoreParatranzCache {
 
     public static void main(String[] args) throws Exception {
-         ParatranzCache.INSTANCE.restorePatatranzCache();
+        ParatranzCache.INSTANCE.restorePatatranzCache();
     }
 }

@@ -1,0 +1,18 @@
+match_rules:
+  include:
+    regex:
+      # 派罗
+      - '^(?i)pyro\d*(?!.*_desc)(?!.*_add)(?!.*drlct).*'
+      # 斯坦顿
+      - '^(?i)stanton\d*(?!.*_desc)(?!.*_add).*'
+      - '^(?i)ui_pregame_port_.*_name'
+      - '^(?i)RR_.*_L[0-9]+(?:(?!_desc).)*$'
+      # //RR_P{N} 如轨道讣闻站
+      - '^(?i)RR_P\d+(?:(?!_desc).)*$'
+      - '^(?i)dfm_crusader_crusader$'
+      # 派罗远星站规则
+      - '^AsteroidCluster_\d+Base_Pyro_Encounter_Region[A-Za-z]+(_\d{3})$'
+      # 焰联监控站匹配规则
+      - '^AsteroidBase_P\d+_L\d+$'
+      # 焰联-行政机库匹配规则
+      - 'ExecutiveHangar_P\d+_L\d+$'

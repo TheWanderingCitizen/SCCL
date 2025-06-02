@@ -1,0 +1,39 @@
+match_rules:
+  include:
+    regex:
+      - '.*'
+      - '.*a'
+    start_with:
+      - asd
+      - asd
+    end_with:
+      - asd
+      - asd
+    eq:
+      - Asd
+      - asd
+    eq_ignore_case:
+      - asd
+      - asd
+    contains:
+      - asd
+      - asd
+  exclude:
+    regex:
+      - '.*'
+      - '.*b'
+    start_with:
+      - asd
+      - asd
+    end_with:
+      - asd
+      - asd
+    eq:
+      - asd
+      - asd
+    eq_ignore_case:
+      - asd
+      - asd
+    contains:
+      - asd
+      - asd

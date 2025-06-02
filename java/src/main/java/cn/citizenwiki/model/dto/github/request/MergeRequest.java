@@ -15,12 +15,6 @@ public class MergeRequest {
     private MergeMethod mergeMethod;
 
 
-    public enum MergeMethod{
-        merge,
-        squash,
-        rebase
-    }
-
     public MergeRequest(String commitTitle, String commitMessage, MergeMethod mergeMethod) {
         this.commitTitle = commitTitle;
         this.commitMessage = commitMessage;
@@ -49,5 +43,11 @@ public class MergeRequest {
 
     public void setMergeMethod(MergeMethod mergeMethod) {
         this.mergeMethod = mergeMethod;
+    }
+
+    public enum MergeMethod {
+        merge,
+        squash,
+        rebase
     }
 }

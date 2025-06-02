@@ -1,4 +1,5 @@
-import cn.citizenwiki.model.dto.FileVersion;
+package cn.citizenwiki.model.dto;
+
 import cn.citizenwiki.model.dto.paratranz.response.PZFile;
 import org.junit.jupiter.api.Test;
 
@@ -69,7 +70,6 @@ public class FileVersionTest {
         FileVersion fv2 = new FileVersion(createPZFile("3.24.4 PTU 98767232", 2L));
 
 
-
         // 比较ID，fv1的ID小，fv2的ID大
         assertTrue(fv1.compareTo(fv2) < 0);
         assertTrue(fv2.compareTo(fv1) > 0);
@@ -93,7 +93,7 @@ public class FileVersionTest {
     // 重载createPZFile方法，支持传递ID
     private PZFile createPZFile(String name, long id) {
         PZFile pzFile = new PZFile();
-        pzFile.setName(name+".json");  // 设置文件名
+        pzFile.setName(name + ".json");  // 设置文件名
         pzFile.setId(id);      // 设置ID
         return pzFile;
     }

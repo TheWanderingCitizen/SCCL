@@ -31,24 +31,34 @@ import java.util.List;
  */
 public class GithubApi extends BaseApi {
 
-    private static final Logger logger = LoggerFactory.getLogger(GithubApi.class);
-
-    private final GithubConfig config;
-
     public static final GithubApi INSTANCE = new GithubApi();
+    private static final Logger logger = LoggerFactory.getLogger(GithubApi.class);
+    private final GithubConfig config;
 
     private GithubApi() {
         this.config = GithubConfig.INSTANCE;
     }
 
+    private static GithubHttpException handleGithubHttpException(HttpException e) {
+        String msg = e.getMessage();
+        if (HttpStatus.FORBIDDEN.getCode() == e.getResponse().statusCode()) {
+            List<String> permissions = e.getResponse().headers().map().get(GithubHeaderConstants.ACCEPTED_PERMISSIONS);
+            if (permissions != null && !permissions.isEmpty()) {
+                msg += " " + GithubHeaderConstants.ACCEPTED_PERMISSIONS + ":" + String.join(",", permissions);
+            }
+        }
+        return new GithubHttpException(e, msg);
+    }
+
     /**
      * 创建一个新的 Pull Request
-     * @param title Pull Request 的标题
-     * @param sourceOwner 源仓库owner
-     * @param targetOwner 目标仓库owner
-     * @param targetRepo 目标仓库名
+     *
+     * @param title            Pull Request 的标题
+     * @param sourceOwner      源仓库owner
+     * @param targetOwner      目标仓库owner
+     * @param targetRepo       目标仓库名
      * @param targetBranchName 目标分支
-     * @param body Pull Request 的正文内容
+     * @param body             Pull Request 的正文内容
      * @return 创建的 Pull Request 的详细信息
      * @see <a href="https://docs.github.com/zh/rest/pulls/pulls?apiVersion=2022-11-28#create-a-pull-request">文档</a>
      */
@@ -72,11 +82,12 @@ public class GithubApi extends BaseApi {
 
     /**
      * 合并 Pull Request
-     * @param owner 目标仓库拥有者
-     * @param repo 目标仓库
-     * @param pullNumber pr编号
-     * @param title 通过信息-标题
-     * @param message 通过信息-正文
+     *
+     * @param owner       目标仓库拥有者
+     * @param repo        目标仓库
+     * @param pullNumber  pr编号
+     * @param title       通过信息-标题
+     * @param message     通过信息-正文
      * @param mergeMethod 合并方式
      * @return
      */
@@ -100,9 +111,10 @@ public class GithubApi extends BaseApi {
 
     /**
      * 获取目标仓库文件信息
-     * @param owner 目标仓库的拥有者
-     * @param repo 目标仓库名称
-     * @param branchName 分支名称
+     *
+     * @param owner       目标仓库的拥有者
+     * @param repo        目标仓库名称
+     * @param branchName  分支名称
      * @param contentPath 文件路径
      * @return
      */
@@ -113,17 +125,6 @@ public class GithubApi extends BaseApi {
                 .GET()
                 .build();
         return sendRequestOfJsonResp(request, GithubJacksonTools.CONTENT);
-    }
-
-    private static GithubHttpException handleGithubHttpException(HttpException e) {
-        String msg = e.getMessage();
-        if (HttpStatus.FORBIDDEN.getCode() == e.getResponse().statusCode()) {
-            List<String> permissions = e.getResponse().headers().map().get(GithubHeaderConstants.ACCEPTED_PERMISSIONS);
-            if (permissions != null && !permissions.isEmpty()) {
-                msg += " " + GithubHeaderConstants.ACCEPTED_PERMISSIONS + ":" + String.join(",", permissions);
-            }
-        }
-        return new GithubHttpException(e, msg);
     }
 
     public InputStream downloadContent(String userName, String repo, String branchName, String contentPath) throws GithubHttpException {
@@ -173,7 +174,7 @@ public class GithubApi extends BaseApi {
      *
      * @param request       请求
      * @param typeReference 类型引用
-     * @param <T> json结构对应的实体
+     * @param <T>           json结构对应的实体
      * @return java bean
      */
     private <T> T sendRequestOfJsonResp(HttpRequest request, TypeReference<T> typeReference) throws GithubHttpException {

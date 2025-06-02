@@ -51,7 +51,7 @@ public class ParatranzApi extends BaseApi {
     /**
      * 通用发送请求方法
      *
-     * @param request     请求
+     * @param request       请求
      * @param typeReference 类型引用
      * @param <T>
      * @return

@@ -1,4 +1,4 @@
-package cn.citizenwiki.config;
+package cn.citizenwiki.model.config;
 
 import java.util.Map;
 import java.util.Set;
@@ -6,7 +6,7 @@ import java.util.Set;
 /**
  * 文本替换相关配置
  */
-public class SearchableLocationReplaceConfig {
+public class SearchableLocationReplaceConfigBean {
 
     private Set<String> ignoreKeys;
 
