@@ -2,3 +2,9 @@ key:
   match_rules:
     imports:
       - '规则/可搜索地点-key.yaml'
+ext: # 扩展规则，用于提供给需要特殊处理的汉化
+  mission_text: # 替换任务文本中地点的规则
+    match_rules:
+      include:
+        start_with: # 以...开头
+          - 'mission_location'

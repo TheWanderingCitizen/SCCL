@@ -1,6 +1,9 @@
 package cn.citizenwiki.utils;
 
+import cn.citizenwiki.config.GlobalConfig;
+import cn.citizenwiki.match.TranslationRuleProcessor;
 import cn.citizenwiki.model.config.SearchableLocationReplaceConfigBean;
+import cn.citizenwiki.model.config.TranslationRuleConfigBean;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.processor.translation.FullTranslationProcessor;
 import org.slf4j.Logger;
@@ -22,20 +25,22 @@ import java.util.regex.Pattern;
 public class SearchableLocationReplacer {
 
     private static final Logger logger = LoggerFactory.getLogger(FullTranslationProcessor.class);
-    private static final String CONFIG_FILE_NAME = "searchable_location_replace_config.yml";
-    private static final Pattern PYRO = Pattern.compile("^(?i)pyro\\d*(?!.*_desc)(?!.*_add)(?!.*drlct).*");
-    private static final Pattern STANTON = Pattern.compile("^(?i)stanton\\d*(?!.*_desc)(?!.*_add).*");
-    private static final Pattern UI = Pattern.compile("^(?i)ui_pregame_port_.*_name");
-    private static final Pattern RR = Pattern.compile("^(?i)RR_.*_L[0-9]+(?:(?!_desc).)*$");
-    //RR_P{N} 如轨道讣闻站
-    private static final Pattern RRP = Pattern.compile("^(?i)RR_P\\d+(?:(?!_desc).)*$");
-    private static final Pattern DFM = Pattern.compile("^(?i)dfm_crusader_crusader$");
-    //派罗远星站规则
-    private static final Pattern ASTEROIDCLUSTER_N_BASE_PYRO_ENCOUNTER_REGION_X = Pattern.compile("^AsteroidCluster_\\d+Base_Pyro_Encounter_Region[A-Za-z]+(_\\d{3})$");
-    //焰联监控站匹配规则
-    private static final Pattern AsteroidBase_P_N_L_N = Pattern.compile("^AsteroidBase_P\\d+_L\\d+$");
-    //焰联-行政机库匹配规则
-    private static final Pattern ExecutiveHangar_P_N_L_N = Pattern.compile("^ExecutiveHangar_P\\d+_L\\d+$");
+
+    private static final String CONFIG_FILE_NAME = "地点双语任务地点覆盖替换配置.yaml";
+
+    private static final TranslationRuleProcessor RULE_PROCESSOR;
+
+    private static final String MATCH_RULE_CONFIG_FILE_NAME = "地点双语.yaml";
+    private static final String MISSION_TEXT_EXT_RULE_NAME = "mission_text";
+    static {
+        // 加载主配置文件
+        TranslationRuleConfigBean translationRuleConfigBean = GlobalConfig.MatcherRulesConfig.getMatcherRule(MATCH_RULE_CONFIG_FILE_NAME);
+        // 创建规则处理器，支持imports机制
+        RULE_PROCESSOR  = TranslationRuleProcessor.fromTranslationRuleConfig(
+                translationRuleConfigBean
+                , GlobalConfig.MatcherRulesConfig::getMatchRulesConfig);
+    }
+
     /**
      * 字典序倒序排列的map
      * <地点译文名，地点英文名>
@@ -52,7 +57,8 @@ public class SearchableLocationReplacer {
         for (Map.Entry<String, PZTranslation> entry : mergedTranslateMap.entrySet()) {
             String key = entry.getKey();
             //原文和译文相同的情况下不替换
-            if (isSearchableKey(key) && entry.getValue().getOriginal().equals(entry.getValue().getTranslation())) {
+            if (RULE_PROCESSOR.isMatch(key, entry.getValue().getOriginal(), entry.getValue().getTranslation())
+                    && !entry.getValue().getOriginal().equals(entry.getValue().getTranslation())) {
                 localtionMap.put(entry.getValue().getTranslation(), entry.getValue().getOriginal());
             }
         }
@@ -75,30 +81,10 @@ public class SearchableLocationReplacer {
     }
 
     /**
-     * 判断key是否为可搜索
-     *
-     * @param key
-     * @return
-     */
-    public static boolean isSearchableKey(String key) {
-        Matcher pyroMc = PYRO.matcher(key);
-        Matcher stantonMc = STANTON.matcher(key);
-        Matcher uiMc = UI.matcher(key);
-        Matcher rRMc = RR.matcher(key);
-        Matcher rrpMc = RRP.matcher(key);
-        Matcher dfmMc = DFM.matcher(key);
-        Matcher abperMc = ASTEROIDCLUSTER_N_BASE_PYRO_ENCOUNTER_REGION_X.matcher(key);
-        Matcher aplMc = AsteroidBase_P_N_L_N.matcher(key);
-        Matcher eplMc = ExecutiveHangar_P_N_L_N.matcher(key);
-        return pyroMc.matches() || stantonMc.matches() || uiMc.matches() || rRMc.matches() || rrpMc.matches()
-                || dfmMc.matches() || abperMc.matches() || aplMc.matches() || eplMc.matches();
-    }
-
-    /**
      * 在地点文本后拼接可被搜索的英文文本
      */
     public String replace(String key, String translation) {
-        if (key.startsWith("mission_location") && !ignoreReplaceSearchKeys.contains(key)) {
+        if (RULE_PROCESSOR.isExtMatch(MISSION_TEXT_EXT_RULE_NAME, key)) {
             //将任务地名中的译名替换为译名[原文]，比如“哈哈斯坦顿”→“哈哈斯坦顿[Stanton]”
             Set<String> replacedWords = new HashSet<>();
             for (Map.Entry<String, String> entry : localtionMap.entrySet()) {

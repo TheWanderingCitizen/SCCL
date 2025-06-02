@@ -1,7 +1,0 @@
-# 地点替换相关配置
-ignore_keys: #哪些key会被忽略（不进行替换）
-  #- "2019_Ann_Sale_Day9"
-  #- "2019_Ann_Sale_Day8"
-override_mappings: #自定义替换文本,格式为：译文：替换内容
-  派罗 II: Pyro II
-  派罗 III: Pyro III

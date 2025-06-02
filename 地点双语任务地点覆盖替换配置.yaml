@@ -1,0 +1,10 @@
+override_mappings: #自定义替换文本,格式为：译文：替换内容
+  派罗 II: Pyro II
+  派罗 III: Pyro III
+  派罗 VI: Pyro VI
+  派罗I: PyroI
+  派罗II: PyroII
+  派罗III: PyroIII
+  派罗IV: PyroIV
+  派罗V: PyroV
+  派罗VI: PyroVI
