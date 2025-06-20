@@ -3,6 +3,7 @@ match_rules:
     regex: [ ] # 正则表达式，若无规则，则为 [ ]，如果需要添加规则，则与其它属性相同
     start_with: # 以...开头
       - 'item_Name'
+      - 'item_name'
       - 'vehicle_Name'
       - 'vehicle_name'
       - 'Pyro_JumpPoint_'
