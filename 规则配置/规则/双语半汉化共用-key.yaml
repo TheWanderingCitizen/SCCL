@@ -1,10 +1,9 @@
 match_rules:
   include: # 包含以下规则的key会进行处理
     regex: [ ] # 正则表达式，若无规则，则为 [ ]，如果需要添加规则，则与其它属性相同
-    start_with: # 以...开头
-      - 'item_Name'
+    start_with: [ ] # 以...开头
+    start_with_ignore_case: # 以...开头（忽略大小写）
       - 'item_name'
-      - 'vehicle_Name'
       - 'vehicle_name'
       - 'Pyro_JumpPoint_'
       - 'Stanton'
@@ -20,7 +19,6 @@ match_rules:
       - 'dfm_crusader'
       - 'AsteroidBase_'
       - 'ExecutiveHangar_'
-    start_with_ignore_case: [ ] # 以...开头（忽略大小写）
     end_with: [ ] # 以...结尾
     end_with_ignore_case: # 以...结尾（忽略大小写）
       - '_from'
