@@ -206,7 +206,14 @@ public class MergeAndConvert implements AutoCloseable {
                         return val;
                     }
                 });
-                //如果翻译文本为空，填充原文
+                //游戏里中文不能正确显示μ，替换为"微"
+                winPz.setTranslation(
+                        winPz.getTranslation()
+                                //希腊字母\u03bc
+                                .replace("\u03bc", "u")
+                                //micro单位\u00b5
+                                .replace("\u00b5", "u")
+                );
                 if (winPz.getTranslation().isBlank()) {
                     winPz.setTranslation(enValue);
                 }
@@ -227,6 +234,15 @@ public class MergeAndConvert implements AutoCloseable {
             throw new RuntimeException("合并后行数[%d]与global.ini行数[%d]不一致,请联系开发查看问题".formatted(mergedTranslateMap.size(), globalIniMap.size()));
         }
         return mergedTranslateMap;
+    }
+
+    public static long countCharStream(String str, char targetChar) {
+        if (str == null || str.isEmpty()) {
+            return 0;
+        }
+        return str.chars()
+                .filter(ch -> ch == targetChar)
+                .count();
     }
 
     /**
