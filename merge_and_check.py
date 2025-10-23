@@ -54,29 +54,30 @@ def check_mission_consistency(
     """
     检查以下一致性：
     1. ~key(Value) 结构
-    2. 百分比一致性
-    3. 特征数字：冒号数字、括号数字（同时支持 ASCII 和全角括号）
+    2. 百分比一致性（忽略 100%）
+    3. 所有数字一致性（不把百分比中的数字当作普通数字）
     4. 换行符一致性（同时考虑实际换行和转义的 '\n'）
     """
     inconsistencies = []
 
     # 匹配形如 ~key(Value) 的结构，捕获 key 和 Value
     re_key_value = re.compile(r"~(\w+)\((.*?)\)")
-    # 匹配以冒号(:或：)开头，后面可能有空格，紧跟一个整数（可为负），后接换行或字符串结尾。用于捕获如 ": 8", "：-5"
-    re_num_colon = re.compile(r"[:：]\s*(-?\d+)\s*(?:\n|$)")
-    # 匹配括号内的所有内容，支持 ASCII 括号 () 和中文全角括号 （）
-    re_num_parenthesis = re.compile(r"[\(（]([^）\)]*)[）\)]")
     # 匹配百分数字符串，如 "15%" "100%"
     re_percentage = re.compile(r"\d+%")
-    # 匹配数字，辅助于括号内容查找所有数字
-    re_digits = re.compile(r"\d+")
+    # 匹配所有非百分比的整数数字（负数也算），确保不捕获像 "15%" 中的 15
+    re_all_numbers = re.compile(r"(?<!\d)(-?\d+)(?!%)")
+    # 支持在括号匹配中识别全角括号（如需单独处理括号内内容，可保留此正则）
+    re_num_parenthesis = re.compile(r"[\(（]([^）\)]*)[）\)]")
 
     for entry in data:
         original_raw = entry.get('original', '')
         translation_raw = entry.get('translation', '')
-        # 为了不破坏中文全角符号，仍保留原文本，后续需要同时处理
-        original = original_raw.replace(' ', '')
-        translation = translation_raw.replace(' ', '')
+        if original_raw is None:
+            original_raw = ''
+        if translation_raw is None:
+            translation_raw = ''
+        original = original_raw
+        translation = translation_raw
         if not translation:
             continue
 
@@ -86,26 +87,18 @@ def check_mission_consistency(
         orig_mis = [m for m in orig_keys if m not in trans_keys]
         trans_mis = [m for m in trans_keys if m not in orig_keys]
 
-        # 数字检查：冒号数字
-        orig_nums = [int(x) for x in re_num_colon.findall(original)]
-        trans_nums = [int(x) for x in re_num_colon.findall(translation)]
+        # 所有数字检查（不包含百分比内的数字）
+        orig_nums = [int(x) for x in re_all_numbers.findall(original)]
+        trans_nums = [int(x) for x in re_all_numbers.findall(translation)]
+        # 也确保括号内使用全角/半角时的数字都能被捕获（re_all_numbers 已覆盖多数情况）
+        num_mis = sorted(orig_nums) != sorted(trans_nums)
 
-        # 数字检查：括号内所有数字（支持全角和半角括号）
-        orig_paren_contents = re_num_parenthesis.findall(original)
-        trans_paren_contents = re_num_parenthesis.findall(translation)
-        orig_nums += [int(num) for content in orig_paren_contents for num in re_digits.findall(content)]
-        trans_nums += [int(num) for content in trans_paren_contents for num in re_digits.findall(content)]
-
-        num_mis = (orig_nums != trans_nums)
-
-        # 百分比检查
+        # 百分比检查：先列出所有百分比，再剔除 "100%" 的条目（忽略 100%）
         orig_perc = re_percentage.findall(original)
         trans_perc = re_percentage.findall(translation)
-        # 处理中文中可能使用 "百分百" 或 "完全" 表示 100%
-        if any(k in translation_raw for k in ["百分百", "完全"]):
-            if "100%" not in trans_perc:
-                trans_perc.append("100%")
-        perc_mis = sorted(orig_perc) != sorted(trans_perc)
+        orig_perc_filtered = [p for p in orig_perc if p != "100%"]
+        trans_perc_filtered = [p for p in trans_perc if p != "100%"]
+        perc_mis = sorted(orig_perc_filtered) != sorted(trans_perc_filtered)
 
         # 换行检查：同时统计真实换行和转义的 '\n'
         orig_nl = original_raw.count('\n') + original_raw.count('\\n')
