@@ -3,6 +3,7 @@ import json
 import re
 import os
 from typing import List, Dict, Any, Set
+from collections import Counter
 
 # ==============================
 # 常量定义
@@ -48,6 +49,34 @@ def fetch_translation_files() -> List[List[Dict[str, Any]]]:
         result.append(file_resp.json())
     return result
 
+def _map_fraction_words_to_percent(text: str) -> List[str]:
+    """
+    将英文中的常见分数字词映射为百分比字符串列表，例如：
+    - "quarter" -> "25%"
+    - "half" -> "50%"
+    - "three quarters" -> "75%"
+    - "third"/"one third" -> "33%"
+    - "two thirds" -> "67%"
+    返回映射出的百分比字符串（可能为空）。
+    """
+    t = text.lower()
+    res = []
+    # 注意检查 longer phrases 先于 shorter 的
+    if re.search(r"three[\s-]?quarters", t):
+        res.append("75%")
+    if re.search(r"two[\s-]?thirds", t):
+        res.append("67%")
+    if re.search(r"\bone[\s-]?third\b", t):
+        res.append("33%")
+    if re.search(r"\bthird\b", t) and "one third" not in t:
+        # 当出现 plain 'third'，也当作 33% 处理
+        res.append("33%")
+    if re.search(r"\bquarter\b", t):
+        res.append("25%")
+    if re.search(r"\bhalf\b", t):
+        res.append("50%")
+    return res
+
 def check_mission_consistency(
     data: List[Dict[str, Any]]
 ) -> List[Dict[str, Any]]:
@@ -55,56 +84,57 @@ def check_mission_consistency(
     检查以下一致性：
     1. ~key(Value) 结构
     2. 百分比一致性（忽略 100%）
-    3. 特征数字：冒号数字、括号数字（同时支持 ASCII 和全角括号）
+    3. 特征数字：冒号数字、括号数字、普通文本数字（不检查键值内的数字），忽略出现顺序，只比较多重集合
     4. 换行符一致性（同时考虑实际换行和转义的 '\n'）
     """
     inconsistencies = []
 
-    # 匹配形如 ~key(Value) 的结构，捕获 key 和 Value
-    re_key_value = re.compile(r"~(\w+)\((.*?)\)")
-    # 匹配以冒号(:或：)开头，后面可能有空格，紧跟一个整数（可为负），后接换行或字符串结尾。用于捕获如 ": 8", "：-5"
-    re_num_colon = re.compile(r"[:：]\s*(-?\d+)\s*(?:\n|$)")
-    # 匹配括号内的所有内容，支持 ASCII 括号 () 和中文全角括号 （）
-    re_num_parenthesis = re.compile(r"[\(（]([^）\)]*)[）\)]")
+    # 匹配形如 ~key(Value) 的结构，捕获 key 和 Value，支持可选空格与半/全角括号
+    re_key_value = re.compile(r"~\s*(\w+)\s*[\(（](.*?)[\)）]")
     # 匹配百分数字符串，如 "15%" "100%"
     re_percentage = re.compile(r"\d+%")
-    # 匹配数字，辅助于括号内容查找所有数字
+    # 匹配数字，辅助于查找所有非百分号数字
     re_digits = re.compile(r"\d+")
+    # 用于检测冒号数字（如 ": 8" 或 "：-5" 等）
+    re_num_colon = re.compile(r"[:：]\s*(-?\d+)\s*(?:\n|$)")
 
     for entry in data:
         original_raw = entry.get('original', '')
         translation_raw = entry.get('translation', '')
-        # 为了不破坏中文全角符号，仍保留原文本，后续需要同时处理
-        original = original_raw.replace(' ', '')
-        translation = translation_raw.replace(' ', '')
-        if not translation:
+        if not translation_raw:
             continue
 
-        # ~key(Value) 检查
-        orig_keys = re_key_value.findall(original)
-        trans_keys = re_key_value.findall(translation)
+        # ~key(Value) 检查（仍然保留该检查）
+        # 使用原始文本（不做去空格）进行关键结构匹配
+        orig_keys = re_key_value.findall(original_raw)
+        trans_keys = re_key_value.findall(translation_raw)
         orig_mis = [m for m in orig_keys if m not in trans_keys]
         trans_mis = [m for m in trans_keys if m not in orig_keys]
 
-        # 数字检查：冒号数字
-        orig_nums = [int(x) for x in re_num_colon.findall(original)]
-        trans_nums = [int(x) for x in re_num_colon.findall(translation)]
+        # 为了避免重复检查键值内数字，先从文本中移除所有 ~key(...) 结构（支持半/全角）
+        original_nokey = re_key_value.sub('', original_raw)
+        translation_nokey = re_key_value.sub('', translation_raw)
 
-        # 数字检查：括号内所有数字（支持全角和半角括号）
-        orig_paren_contents = re_num_parenthesis.findall(original)
-        trans_paren_contents = re_num_parenthesis.findall(translation)
-        orig_nums += [int(num) for content in orig_paren_contents for num in re_digits.findall(content)]
-        trans_nums += [int(num) for content in trans_paren_contents for num in re_digits.findall(content)]
+        # 百分比提取（来自显式的 xx%）
+        orig_perc = re_percentage.findall(original_nokey)
+        trans_perc = re_percentage.findall(translation_nokey)
+        # 另外识别原文中可能的分数字词（仅针对原文或英文描述）
+        orig_perc += _map_fraction_words_to_percent(original_nokey)
 
-        num_mis = (orig_nums != trans_nums)
-
-        # 百分比检查：忽略 100% 的比对
-        orig_perc = re_percentage.findall(original)
-        trans_perc = re_percentage.findall(translation)
-        # 从比对列表中剔除 "100%"，这样任何关于 100% 的差异都将被忽略
+        # 忽略 100% 的检查：从比对列表中剔除 "100%"
         orig_perc_filtered = [p for p in orig_perc if p != "100%"]
         trans_perc_filtered = [p for p in trans_perc if p != "100%"]
-        perc_mis = sorted(orig_perc_filtered) != sorted(trans_perc_filtered)
+        # 按多重集合比较（忽略顺序）
+        perc_mis = Counter(orig_perc_filtered) != Counter(trans_perc_filtered)
+
+        # 数字提取（不包含百分号数字）
+        orig_for_numbers = re_percentage.sub('', original_nokey)
+        trans_for_numbers = re_percentage.sub('', translation_nokey)
+        # 从冒号形式也提取数字（但最后我们直接用所有数字的集合计数比较）
+        orig_nums = [int(n) for n in re_digits.findall(orig_for_numbers)]
+        trans_nums = [int(n) for n in re_digits.findall(trans_for_numbers)]
+        # 比较多重集合（忽略顺序）
+        num_mis = Counter(orig_nums) != Counter(trans_nums)
 
         # 换行检查：同时统计真实换行和转义的 '\n'
         orig_nl = original_raw.count('\n') + original_raw.count('\\n')
