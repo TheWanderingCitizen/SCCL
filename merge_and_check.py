@@ -20,7 +20,6 @@ HEADERS = {
 # ==============================
 # 工具函数
 # ==============================
-
 def merge_json_data(*lists: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """合并多个 JSON 列表，保留每个 key 下 id 最大的数据。"""
     merged = {}
@@ -61,7 +60,7 @@ def _map_fraction_words_to_percent(text: str) -> List[str]:
     """
     t = text.lower()
     res = []
-    # 注意检查 longer phrases 先于 shorter 的
+    # 检查长短短语，长的优先
     if re.search(r"three[\s-]?quarters", t):
         res.append("75%")
     if re.search(r"two[\s-]?thirds", t):
@@ -69,7 +68,6 @@ def _map_fraction_words_to_percent(text: str) -> List[str]:
     if re.search(r"\bone[\s-]?third\b", t):
         res.append("33%")
     if re.search(r"\bthird\b", t) and "one third" not in t:
-        # 当出现 plain 'third'，也当作 33% 处理
         res.append("33%")
     if re.search(r"\bquarter\b", t):
         res.append("25%")
@@ -83,7 +81,7 @@ def check_mission_consistency(
     """
     检查以下一致性：
     1. ~key(Value) 结构
-    2. 百分比一致性（忽略 100%）
+    2. 百分比一致性（忽略 100%，并且若原文包含可替换的分数字词，则允许译文使用对应百分比）
     3. 特征数字：冒号数字、括号数字、普通文本数字（不检查键值内的数字），忽略出现顺序，只比较多重集合
     4. 换行符一致性（同时考虑实际换行和转义的 '\n'）
     """
@@ -105,7 +103,6 @@ def check_mission_consistency(
             continue
 
         # ~key(Value) 检查（仍然保留该检查）
-        # 使用原始文本（不做去空格）进行关键结构匹配
         orig_keys = re_key_value.findall(original_raw)
         trans_keys = re_key_value.findall(translation_raw)
         orig_mis = [m for m in orig_keys if m not in trans_keys]
@@ -116,21 +113,29 @@ def check_mission_consistency(
         translation_nokey = re_key_value.sub('', translation_raw)
 
         # 百分比提取（来自显式的 xx%）
-        orig_perc = re_percentage.findall(original_nokey)
+        orig_perc_explicit = re_percentage.findall(original_nokey)
         trans_perc = re_percentage.findall(translation_nokey)
-        # 另外识别原文中可能的分数字词（仅针对原文或英文描述）
-        orig_perc += _map_fraction_words_to_percent(original_nokey)
+
+        # 识别原文中可能的分数字词（仅针对原文），用于允许译文出现对应百分比
+        mapped_from_fraction = _map_fraction_words_to_percent(original_nokey)
 
         # 忽略 100% 的检查：从比对列表中剔除 "100%"
-        orig_perc_filtered = [p for p in orig_perc if p != "100%"]
+        orig_perc_filtered = [p for p in orig_perc_explicit if p != "100%"]
         trans_perc_filtered = [p for p in trans_perc if p != "100%"]
+
+        # 如果原文包含可替换分数字词，则把映射的百分比视为原文可接受的百分比之一：
+        # 这样当原文写 "quarter"/"half" 等时，译文写 "25%"/"50%" 会被接受。
+        if mapped_from_fraction:
+            orig_perc_for_compare = orig_perc_filtered + mapped_from_fraction
+        else:
+            orig_perc_for_compare = orig_perc_filtered
+
         # 按多重集合比较（忽略顺序）
-        perc_mis = Counter(orig_perc_filtered) != Counter(trans_perc_filtered)
+        perc_mis = Counter(orig_perc_for_compare) != Counter(trans_perc_filtered)
 
         # 数字提取（不包含百分号数字）
         orig_for_numbers = re_percentage.sub('', original_nokey)
         trans_for_numbers = re_percentage.sub('', translation_nokey)
-        # 从冒号形式也提取数字（但最后我们直接用所有数字的集合计数比较）
         orig_nums = [int(n) for n in re_digits.findall(orig_for_numbers)]
         trans_nums = [int(n) for n in re_digits.findall(trans_for_numbers)]
         # 比较多重集合（忽略顺序）
@@ -142,6 +147,14 @@ def check_mission_consistency(
         nl_mis = orig_nl != trans_nl
 
         if orig_mis or trans_mis or num_mis or perc_mis or nl_mis:
+            # 在报告中保留显式提取的原文百分比和译文百分比，以及映射结果（如果有），以便审阅
+            perc_report = {
+                'original_percentages_explicit': orig_perc_explicit,
+                'translation_percentages': trans_perc
+            }
+            if mapped_from_fraction:
+                perc_report['original_percentages_mapped_from_fraction_words'] = mapped_from_fraction
+
             inconsistencies.append({
                 'key': entry.get('key'),
                 'id': entry.get('id'),
@@ -153,10 +166,7 @@ def check_mission_consistency(
                     'original_numbers': orig_nums,
                     'translation_numbers': trans_nums
                 } if num_mis else {},
-                'percentage_mismatches': {
-                    'original_percentages': orig_perc,
-                    'translation_percentages': trans_perc
-                } if perc_mis else {},
+                'percentage_mismatches': perc_report if perc_mis else {},
                 'newline_mismatch': {
                     'original_newlines': orig_nl,
                     'translation_newlines': trans_nl
