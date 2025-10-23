@@ -55,8 +55,8 @@ def check_mission_consistency(
     检查以下一致性：
     1. ~key(Value) 结构
     2. 百分比一致性
-    3. 特征数字：冒号数字、括号数字
-    4. 换行符一致性
+    3. 特征数字：冒号数字、括号数字（同时支持 ASCII 和全角括号）
+    4. 换行符一致性（同时考虑实际换行和转义的 '\n'）
     """
     inconsistencies = []
 
@@ -64,16 +64,19 @@ def check_mission_consistency(
     re_key_value = re.compile(r"~(\w+)\((.*?)\)")
     # 匹配以冒号(:或：)开头，后面可能有空格，紧跟一个整数（可为负），后接换行或字符串结尾。用于捕获如 ": 8", "：-5"
     re_num_colon = re.compile(r"[:：]\s*(-?\d+)\s*(?:\n|$)")
-    # 匹配括号内的所有内容，如 "(8 cap 12 test)" 会捕获 "8 cap 12 test"
-    re_num_parenthesis = re.compile(r"\(([^)]*)\)")
+    # 匹配括号内的所有内容，支持 ASCII 括号 () 和中文全角括号 （）
+    re_num_parenthesis = re.compile(r"[\(（]([^）\)]*)[）\)]")
     # 匹配百分数字符串，如 "15%" "100%"
     re_percentage = re.compile(r"\d+%")
     # 匹配数字，辅助于括号内容查找所有数字
     re_digits = re.compile(r"\d+")
 
     for entry in data:
-        original = entry.get('original', '').replace(' ', '')
-        translation = entry.get('translation', '').replace(' ', '')
+        original_raw = entry.get('original', '')
+        translation_raw = entry.get('translation', '')
+        # 为了不破坏中文全角符号，仍保留原文本，后续需要同时处理
+        original = original_raw.replace(' ', '')
+        translation = translation_raw.replace(' ', '')
         if not translation:
             continue
 
@@ -87,7 +90,7 @@ def check_mission_consistency(
         orig_nums = [int(x) for x in re_num_colon.findall(original)]
         trans_nums = [int(x) for x in re_num_colon.findall(translation)]
 
-        # 数字检查：括号内所有数字
+        # 数字检查：括号内所有数字（支持全角和半角括号）
         orig_paren_contents = re_num_parenthesis.findall(original)
         trans_paren_contents = re_num_parenthesis.findall(translation)
         orig_nums += [int(num) for content in orig_paren_contents for num in re_digits.findall(content)]
@@ -98,22 +101,23 @@ def check_mission_consistency(
         # 百分比检查
         orig_perc = re_percentage.findall(original)
         trans_perc = re_percentage.findall(translation)
-        if any(k in translation for k in ["百分百", "完全"]):
+        # 处理中文中可能使用 "百分百" 或 "完全" 表示 100%
+        if any(k in translation_raw for k in ["百分百", "完全"]):
             if "100%" not in trans_perc:
                 trans_perc.append("100%")
-        perc_mis = sorted(orig_perc) != sorted([p for p in orig_perc if p in trans_perc])
+        perc_mis = sorted(orig_perc) != sorted(trans_perc)
 
-        # 换行检查
-        orig_nl = original.count('\\n')
-        trans_nl = translation.count('\\n')
+        # 换行检查：同时统计真实换行和转义的 '\n'
+        orig_nl = original_raw.count('\n') + original_raw.count('\\n')
+        trans_nl = translation_raw.count('\n') + translation_raw.count('\\n')
         nl_mis = orig_nl != trans_nl
 
         if orig_mis or trans_mis or num_mis or perc_mis or nl_mis:
             inconsistencies.append({
                 'key': entry.get('key'),
                 'id': entry.get('id'),
-                'original': entry.get('original', ''),
-                'translation': entry.get('translation', ''),
+                'original': original_raw,
+                'translation': translation_raw,
                 'original_mismatches': orig_mis,
                 'translation_mismatches': trans_mis,
                 'number_mismatches': {
@@ -181,9 +185,10 @@ def main() -> None:
     # 2. 检查一致性
     inconsistencies = check_mission_consistency(merged_data)
     if inconsistencies:
+        # 过滤：包含任意一种不一致（~key 结构、数字不一致、百分比不一致、换行不一致等）
         filtered = [
             inc for inc in inconsistencies
-            if inc['original_mismatches'] or inc['translation_mismatches'] or inc['newline_mismatch']
+            if inc.get('original_mismatches') or inc.get('translation_mismatches') or inc.get('number_mismatches') or inc.get('percentage_mismatches') or inc.get('newline_mismatch')
         ]
         save_to_json(filtered, 'inconsistencies.json')
         print(f"发现 {len(filtered)} 个格式不一致项，详情见 inconsistencies.json")
