@@ -81,7 +81,8 @@ def check_mission_consistency(
     """
     检查以下一致性：
     1. ~key(Value) 结构
-    2. 百分比一致性（忽略 100%，并且若原文包含可替换的分数字词，则允许译文使用对应百分比）
+    2. 百分比一致性（忽略 100%，并且若原文包含可替换的分数字词，则允许译文使用对应百分比；
+       若原文仅为分数字词且译文没有显式百分比，则不视为不一致）
     3. 特征数字：冒号数字、括号数字、普通文本数字（不检查键值内的数字），忽略出现顺序，只比较多重集合
     4. 换行符一致性（同时考虑实际换行和转义的 '\n'）
     """
@@ -123,15 +124,16 @@ def check_mission_consistency(
         orig_perc_filtered = [p for p in orig_perc_explicit if p != "100%"]
         trans_perc_filtered = [p for p in trans_perc if p != "100%"]
 
-        # 如果原文包含可替换分数字词，则把映射的百分比视为原文可接受的百分比之一：
-        # 这样当原文写 "quarter"/"half" 等时，译文写 "25%"/"50%" 会被接受。
-        if mapped_from_fraction:
-            orig_perc_for_compare = orig_perc_filtered + mapped_from_fraction
-        else:
-            orig_perc_for_compare = orig_perc_filtered
+        # 构建原文用于比较的百分比集合：显式百分比 +（当存在时）从分数字词映射的百分比
+        orig_perc_for_compare = orig_perc_filtered + (mapped_from_fraction if mapped_from_fraction else [])
 
-        # 按多重集合比较（忽略顺序）
-        perc_mis = Counter(orig_perc_for_compare) != Counter(trans_perc_filtered)
+        # 关键逻辑调整：
+        # 如果原文没有显式百分比，仅包含可替换的分数字词，且译文也没有显式百分比，
+        # 则认为两者在百分比项上兼容（不算不一致）。
+        if mapped_from_fraction and not orig_perc_explicit and not trans_perc_filtered:
+            perc_mis = False
+        else:
+            perc_mis = Counter(orig_perc_for_compare) != Counter(trans_perc_filtered)
 
         # 数字提取（不包含百分号数字）
         orig_for_numbers = re_percentage.sub('', original_nokey)
