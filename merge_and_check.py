@@ -17,24 +17,26 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-# 统一编译正则（避免重复）
+# 统一编译正则
 RE_KEY_VALUE = re.compile(r"~\s*(\w+)\s*[\(（](.*?)[\)）]", re.S)
 RE_PAREN = re.compile(r"[\(（]([^）\)]*)[）\)]")
 RE_COLON_TO_EOL = re.compile(r"[:：]\s*([^\n\r]*)")
 RE_PERCENT = re.compile(r"\d+%")
 RE_DIGITS = re.compile(r"\d+")
+# 只去掉标签的 <> 外壳，保留内部文本：<EM4>50</EM4> -> 50
+RE_TAGS_STRIP = re.compile(r"</?[^>]+>")
+
 RE_FRACTION_WORDS = [
     (re.compile(r"three[\s-]?quarters", re.I), "75%"),
     (re.compile(r"two[\s-]?thirds", re.I), "67%"),
     (re.compile(r"\bone[\s-]?third\b", re.I), "33%"),
-    # 独立的 "third"（避免和 "one third" 重复）
-    (re.compile(r"\bthird\b", re.I), "33%"),
+    (re.compile(r"\bthird\b", re.I), "33%"),  # 非 one third 的 third
     (re.compile(r"\bquarter\b", re.I), "25%"),
     (re.compile(r"\bhalf\b", re.I), "50%"),
 ]
 
 # ==============================
-# 工具函数（通用）
+# 工具函数
 # ==============================
 def ensure_auth() -> None:
     if not AUTHORIZATION:
@@ -45,15 +47,12 @@ def save_to_json(data: Any, path: str) -> None:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def line_count_including_escaped(text: str) -> int:
-    """真实换行 + 转义 \\n 的合计。"""
     return text.count("\n") + text.count("\\n")
 
 def first_line(s: str) -> str:
-    """统一把 '\\n' 视作换行符，然后取首行。"""
     return s.replace("\\n", "\n").split("\n", 1)[0]
 
 def merge_json_data(*lists: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """合并多个 JSON 列表，保留每个 key 下 id 最大的数据。"""
     merged: Dict[str, Dict[str, Any]] = {}
     for json_list in lists:
         for item in json_list:
@@ -65,7 +64,7 @@ def merge_json_data(*lists: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return list(merged.values())
 
 # ==============================
-# HTTP 层
+# HTTP
 # ==============================
 def fetch_translation_files(session: requests.Session) -> List[List[Dict[str, Any]]]:
     url = f"{API_BASE}/files"
@@ -88,7 +87,7 @@ def batch_update_stage(session: requests.Session, ids: List[int], stage: int = 2
     print(f"成功更新 {len(ids)} 个词条的 stage 为 {stage}。")
 
 # ==============================
-# 文本受检区与抽取器（消除重复）
+# 片段/抽取器
 # ==============================
 def map_fraction_words_to_percent(text: str) -> List[str]:
     t = text.lower()
@@ -99,10 +98,8 @@ def map_fraction_words_to_percent(text: str) -> List[str]:
     return res
 
 def remove_compared_key_blocks(text: str, compared_keys: Set[str]) -> str:
-    """只移除已参与 ~key(...) 比对的 key 的块，避免误删普通括号。"""
     out = text
     for k in compared_keys:
-        # ~ key (...) 多行非贪婪
         pat = re.compile(rf"~\s*{re.escape(k)}\s*[\(（].*?[\)）]", re.S)
         out = pat.sub("", out)
     return out
@@ -110,15 +107,22 @@ def remove_compared_key_blocks(text: str, compared_keys: Set[str]) -> str:
 def extract_key_pairs(text: str) -> List[Tuple[str, str]]:
     return RE_KEY_VALUE.findall(text)
 
+def strip_tags_keep_inner(s: str) -> str:
+    """去掉 HTML 样式标签外壳，保留内部文本（避免 EM4 中的 '4' 干扰）"""
+    return RE_TAGS_STRIP.sub("", s)
+
 def extract_inspected_parts(text: str, compared_keys: Set[str]) -> Tuple[List[str], List[str]]:
     """
-    先移除 ~key(...)（仅限已比对的 key），然后抽取：
+    先移除 ~key(...)（仅限已比对key），再抽取：
     - 冒号后的片段
     - 括号内的片段
+    并把标签外壳去掉（保留内部文本）
     """
     cleaned = remove_compared_key_blocks(text, compared_keys) if compared_keys else text
     colon_parts = RE_COLON_TO_EOL.findall(cleaned)
     paren_parts = RE_PAREN.findall(cleaned)
+    colon_parts = [strip_tags_keep_inner(p) for p in colon_parts]
+    paren_parts = [strip_tags_keep_inner(p) for p in paren_parts]
     return colon_parts, paren_parts
 
 def extract_percentages(parts: List[str]) -> List[str]:
@@ -127,18 +131,32 @@ def extract_percentages(parts: List[str]) -> List[str]:
         res += RE_PERCENT.findall(s)
     return res
 
-def extract_mapped_percents_from_fraction_words(parts: List[str]) -> List[str]:
-    res: List[str] = []
-    for s in parts:
-        res += map_fraction_words_to_percent(s)
-    return res
-
-def extract_numbers(parts: List[str]) -> List[int]:
-    """仅提取纯数字（剔除百分比中的数字）。"""
+def extract_numbers_from_colon(colon_parts: List[str]) -> List[int]:
+    """
+    只在“冒号后紧跟数字”的情况下提取（允许空格与标签被剥离后的位置对齐）：
+    - 例如 ":   <EM4>50-55</EM4>" -> 剥标签后为 "50-55" -> 只取 50
+    - 如果开头不是数字（如先是文字/符号），不取任何数字
+    """
     nums: List[int] = []
-    for s in parts:
-        s_nopct = RE_PERCENT.sub("", s)
-        nums += [int(x) for x in RE_DIGITS.findall(s_nopct)]
+    for s in colon_parts:
+        # 去掉百分比，避免 '25%' 抽两次
+        s_clean = RE_PERCENT.sub("", s)
+        # 开头若紧跟数字（允许前导空格）
+        m = re.match(r"\s*(\d+)", s_clean)
+        if m:
+            nums.append(int(m.group(1)))
+    return nums
+
+def extract_numbers_from_paren(paren_parts: List[str]) -> List[int]:
+    """
+    括号段：提取所有“独立数字”，避免字母相邻的技术标识（如 EM4、DX11、v2）。
+    仍然会去掉百分号，避免 '25%' 抽两次。
+    """
+    nums: List[int] = []
+    for s in paren_parts:
+        s_clean = RE_PERCENT.sub("", s)
+        for m in re.finditer(r"(?<![A-Za-z])\d+(?![A-Za-z])", s_clean):
+            nums.append(int(m.group(0)))
     return nums
 
 # ==============================
@@ -168,7 +186,9 @@ def check_mission_consistency(data: List[Dict[str, Any]]) -> List[Dict[str, Any]
         orig_pct_explicit = extract_percentages(orig_colon + orig_paren)
         trans_pct = extract_percentages(trans_colon + trans_paren)
 
-        mapped_from_fraction = extract_mapped_percents_from_fraction_words(orig_colon + orig_paren)
+        mapped_from_fraction = []
+        for s in orig_colon + orig_paren:
+            mapped_from_fraction += map_fraction_words_to_percent(s)
 
         # 忽略 100%
         filt_orig_pct = [p for p in orig_pct_explicit if p != "100%"]
@@ -182,9 +202,9 @@ def check_mission_consistency(data: List[Dict[str, Any]]) -> List[Dict[str, Any]
         else:
             perc_mis = Counter(orig_pct_for_compare) != Counter(filt_trans_pct)
 
-        # 数字（多重集合）
-        orig_nums = extract_numbers(orig_colon + orig_paren)
-        trans_nums = extract_numbers(trans_colon + trans_paren)
+        # 数字：冒号段仅取“紧跟冒号”的数字；括号段取全部独立数字
+        orig_nums = extract_numbers_from_colon(orig_colon) + extract_numbers_from_paren(orig_paren)
+        trans_nums = extract_numbers_from_colon(trans_colon) + extract_numbers_from_paren(trans_paren)
         num_mis = Counter(orig_nums) != Counter(trans_nums)
 
         # 换行
@@ -221,10 +241,8 @@ def check_mission_consistency(data: List[Dict[str, Any]]) -> List[Dict[str, Any]
     return inconsistencies
 
 def check_item_types(data: List[Dict[str, Any]]) -> List[str]:
-    """检查物品类型一致性（抽取首行，避免 '\\n'/实际换行差异）。"""
     item_type_map: Dict[str, Set[str]] = {}
     issues: List[str] = []
-
     for entry in data:
         tr = entry.get("translation") or ""
         or_ = entry.get("original") or ""
@@ -256,14 +274,13 @@ def check_item_types(data: List[Dict[str, Any]]) -> List[str]:
 # ==============================
 def main() -> None:
     ensure_auth()
-
     with requests.Session() as s:
-        # 1. 获取并合并数据
+        # 1) 获取并合并
         file_data = fetch_translation_files(s)
         merged_data = merge_json_data(*file_data)
         save_to_json(merged_data, "merged_data.json")
 
-        # 2. 检查一致性
+        # 2) 一致性检查
         inconsistencies = check_mission_consistency(merged_data)
         if inconsistencies:
             filtered = [
@@ -280,7 +297,7 @@ def main() -> None:
             batch_update_stage(s, failed_ids, stage=2)
         else:
             print("所有格式内容一致，无不一致项。")
-            # 3. 检查物品类型（保持与原逻辑一致：仅在无格式不一致时执行）
+            # 3) 物品类型检查（保持原有策略）
             item_type_issues = check_item_types(merged_data)
             if item_type_issues:
                 save_to_json(item_type_issues, "inconsistencies.json")
