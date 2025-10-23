@@ -21,11 +21,14 @@ HEADERS = {
 RE_KEY_VALUE = re.compile(r"~\s*(\w+)\s*[\(（](.*?)[\)）]", re.S)
 RE_PAREN = re.compile(r"[\(（]([^）\)]*)[）\)]")
 RE_COLON_TO_EOL = re.compile(r"[:：]\s*([^\n\r]*)")
-RE_PERCENT = re.compile(r"\d+%")
-RE_DIGITS = re.compile(r"\d+")
+
+# 百分比：允许可选正负号与空格，例如 "+30 %", "-40%", "0%"
+RE_PERCENT_SIGNED = re.compile(r"[+-]?\s*\d+\s*%")
+
 # 只去掉标签的 <> 外壳，保留内部文本：<EM4>50</EM4> -> 50
 RE_TAGS_STRIP = re.compile(r"</?[^>]+>")
 
+# 分数字词映射
 RE_FRACTION_WORDS = [
     (re.compile(r"three[\s-]?quarters", re.I), "75%"),
     (re.compile(r"two[\s-]?thirds", re.I), "67%"),
@@ -125,23 +128,35 @@ def extract_inspected_parts(text: str, compared_keys: Set[str]) -> Tuple[List[st
     paren_parts = [strip_tags_keep_inner(p) for p in paren_parts]
     return colon_parts, paren_parts
 
-def extract_percentages(parts: List[str]) -> List[str]:
+# —— 百分比提取（带归一化） ——
+def extract_percentages_normalized(parts: List[str]) -> List[str]:
+    """
+    提取百分比，保留正负号；去掉内部空格：
+    "+40 %", "+ 40%"  → "+40%"
+    "-40 %", "- 40%"  → "-40%"
+    "40 %"            → "40%"
+    """
     res: List[str] = []
     for s in parts:
-        res += RE_PERCENT.findall(s)
+        for m in RE_PERCENT_SIGNED.findall(s):
+            # 去掉所有空格，保留符号
+            norm = re.sub(r"\s+", "", m)
+            res.append(norm)  # e.g. "+40%", "-40%", "40%"
     return res
+
+# —— 去掉文本中的百分比（用于数字提取时避免二次计数） ——
+def strip_percentages(text: str) -> str:
+    return RE_PERCENT_SIGNED.sub("", text)
 
 def extract_numbers_from_colon(colon_parts: List[str]) -> List[int]:
     """
-    只在“冒号后紧跟数字”的情况下提取（允许空格与标签被剥离后的位置对齐）：
-    - 例如 ":   <EM4>50-55</EM4>" -> 剥标签后为 "50-55" -> 只取 50
+    只在“冒号后紧跟数字”的情况下提取（允许空格；标签壳已剥离）：
+    - ":   50-55 SCU" -> 取 50
     - 如果开头不是数字（如先是文字/符号），不取任何数字
     """
     nums: List[int] = []
     for s in colon_parts:
-        # 去掉百分比，避免 '25%' 抽两次
-        s_clean = RE_PERCENT.sub("", s)
-        # 开头若紧跟数字（允许前导空格）
+        s_clean = strip_percentages(s)
         m = re.match(r"\s*(\d+)", s_clean)
         if m:
             nums.append(int(m.group(1)))
@@ -149,13 +164,13 @@ def extract_numbers_from_colon(colon_parts: List[str]) -> List[int]:
 
 def extract_numbers_from_paren(paren_parts: List[str]) -> List[int]:
     """
-    括号段：提取所有“独立数字”，避免字母相邻的技术标识（如 EM4、DX11、v2）。
-    仍然会去掉百分号，避免 '25%' 抽两次。
+    括号段：仅匹配“真正独立”的数字（两侧都不是 \w），避免 8x、8倍、UE5、EM4、v2 等。
+    同样先去百分号，避免 '25%' 二次计数。
     """
     nums: List[int] = []
     for s in paren_parts:
-        s_clean = RE_PERCENT.sub("", s)
-        for m in re.finditer(r"(?<![A-Za-z])\d+(?![A-Za-z])", s_clean):
+        s_clean = strip_percentages(s)
+        for m in re.finditer(r"(?<!\w)\d+(?!\w)", s_clean):
             nums.append(int(m.group(0)))
     return nums
 
@@ -166,59 +181,104 @@ def check_mission_consistency(data: List[Dict[str, Any]]) -> List[Dict[str, Any]
     inconsistencies: List[Dict[str, Any]] = []
 
     for entry in data:
+        key = entry.get("key", "") or ""
         original_raw = entry.get("original", "") or ""
         translation_raw = entry.get("translation", "") or ""
         if not translation_raw:
             continue
 
-        # ~key(...) 配对
+        # ~key(...) 配对（对所有 key 都检查）
         orig_pairs = extract_key_pairs(original_raw)
         trans_pairs = extract_key_pairs(translation_raw)
         orig_mis = [m for m in orig_pairs if m not in trans_pairs]
         trans_mis = [m for m in trans_pairs if m not in orig_pairs]
         compared_keys: Set[str] = set([k for k, _ in orig_pairs] + [k for k, _ in trans_pairs])
 
-        # 抽取受检区域
+        # 抽取受检区域（对所有 key 都可复用）
         orig_colon, orig_paren = extract_inspected_parts(original_raw, compared_keys)
         trans_colon, trans_paren = extract_inspected_parts(translation_raw, compared_keys)
 
+        # —— 是否进行“数字 & 百分比”检查：仅 item_* 才检查 ——
+        do_numeric_checks = key.startswith("item_")
+
         # 百分比
-        orig_pct_explicit = extract_percentages(orig_colon + orig_paren)
-        trans_pct = extract_percentages(trans_colon + trans_paren)
+        if do_numeric_checks:
+            orig_pct_explicit = extract_percentages_normalized(orig_colon + orig_paren)
 
-        mapped_from_fraction = []
-        for s in orig_colon + orig_paren:
-            mapped_from_fraction += map_fraction_words_to_percent(s)
+            # 译文先看受检区
+            trans_pct = extract_percentages_normalized(trans_colon + trans_paren)
 
-        # 忽略 100%
-        filt_orig_pct = [p for p in orig_pct_explicit if p != "100%"]
-        filt_trans_pct = [p for p in trans_pct if p != "100%"]
+            # 兜底：原文有 % 但译文受检区没抓到 → 在整句译文里再扫一次（去标签）
+            if orig_pct_explicit and not trans_pct:
+                whole_trans = strip_tags_keep_inner(translation_raw)
+                trans_pct = extract_percentages_normalized([whole_trans])
 
-        orig_pct_for_compare = filt_orig_pct + mapped_from_fraction
+            # 分数字词映射（原文受检区）
+            mapped_from_fraction = []
+            for s in orig_colon + orig_paren:
+                mapped_from_fraction += map_fraction_words_to_percent(s)
 
-        # 仅有分数字词且译文无显式百分比 → 视为兼容
-        if mapped_from_fraction and not filt_orig_pct and not filt_trans_pct:
-            perc_mis = False
+            # 忽略 100%（本就常见为固定说明）
+            filt_orig_pct = [p for p in orig_pct_explicit if p != "100%"]
+            filt_trans_pct = [p for p in trans_pct if p != "100%"]
+
+            orig_pct_for_compare = filt_orig_pct + mapped_from_fraction
+
+            # 仅有分数字词且译文无显式百分比 → 兼容
+            if mapped_from_fraction and not filt_orig_pct and not filt_trans_pct:
+                perc_mis = False
+            else:
+                perc_mis = Counter(orig_pct_for_compare) != Counter(filt_trans_pct)
         else:
-            perc_mis = Counter(orig_pct_for_compare) != Counter(filt_trans_pct)
+            # 非 item_*：不做百分比检查
+            perc_mis = False
+            orig_pct_explicit, trans_pct, mapped_from_fraction = [], [], []
+            filt_orig_pct, filt_trans_pct, orig_pct_for_compare = [], [], []
 
-        # 数字：冒号段仅取“紧跟冒号”的数字；括号段取全部独立数字
-        orig_nums = extract_numbers_from_colon(orig_colon) + extract_numbers_from_paren(orig_paren)
-        trans_nums = extract_numbers_from_colon(trans_colon) + extract_numbers_from_paren(trans_paren)
-        num_mis = Counter(orig_nums) != Counter(trans_nums)
+        # 数字（冒号与括号分开；括号仅原文括号有数字时才比较）
+        if do_numeric_checks:
+            orig_colon_nums = extract_numbers_from_colon(orig_colon)
+            trans_colon_nums = extract_numbers_from_colon(trans_colon)
 
-        # 换行
+            orig_paren_nums = extract_numbers_from_paren(orig_paren)
+            trans_paren_nums = extract_numbers_from_paren(trans_paren)
+
+            colon_mis = Counter(orig_colon_nums) != Counter(trans_colon_nums)
+            paren_mis = Counter(orig_paren_nums, ) != Counter(trans_paren_nums) if orig_paren_nums else False
+            num_mis = colon_mis or paren_mis
+        else:
+            orig_colon_nums = trans_colon_nums = []
+            orig_paren_nums = trans_paren_nums = []
+            colon_mis = paren_mis = num_mis = False
+
+        # 换行（所有 key 仍可检查）
         nl_orig = line_count_including_escaped(original_raw)
         nl_trans = line_count_including_escaped(translation_raw)
         nl_mis = nl_orig != nl_trans
 
         if orig_mis or trans_mis or num_mis or perc_mis or nl_mis:
-            perc_report = {
-                "original_percentages_explicit": orig_pct_explicit,
-                "translation_percentages": trans_pct,
-            }
-            if mapped_from_fraction:
-                perc_report["original_percentages_mapped_from_fraction_words"] = mapped_from_fraction
+            perc_report = {}
+            if perc_mis:
+                perc_report = {
+                    "original_percentages_explicit": orig_pct_explicit,
+                    "translation_percentages": trans_pct,
+                }
+                if mapped_from_fraction:
+                    perc_report["original_percentages_mapped_from_fraction_words"] = mapped_from_fraction
+
+            number_report = {}
+            if num_mis:
+                number_report = {
+                    "colon": {
+                        "original": orig_colon_nums,
+                        "translation": trans_colon_nums,
+                    },
+                }
+                if orig_paren_nums:
+                    number_report["paren"] = {
+                        "original": orig_paren_nums,
+                        "translation": trans_paren_nums,
+                    }
 
             inconsistencies.append({
                 "key": entry.get("key"),
@@ -227,11 +287,8 @@ def check_mission_consistency(data: List[Dict[str, Any]]) -> List[Dict[str, Any]
                 "translation": translation_raw,
                 "original_mismatches": orig_mis,
                 "translation_mismatches": trans_mis,
-                "number_mismatches": {
-                    "original_numbers": orig_nums,
-                    "translation_numbers": trans_nums,
-                } if num_mis else {},
-                "percentage_mismatches": perc_report if perc_mis else {},
+                "number_mismatches": number_report,
+                "percentage_mismatches": perc_report,
                 "newline_mismatch": {
                     "original_newlines": nl_orig,
                     "translation_newlines": nl_trans,
