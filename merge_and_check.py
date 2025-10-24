@@ -78,7 +78,7 @@ def fetch_translation_files(session: requests.Session) -> List[List[Dict[str, An
     out = []
     for item in r.json():
         fid = item["id"]
-        dl = session.get(f"{API_BASE}/files/{{fid}}/translation", headers=HEADERS)
+        dl = session.get(f"{API_BASE}/files/{fid}/translation", headers=HEADERS)
         dl.raise_for_status()
         out.append(dl.json())
     return out
@@ -89,14 +89,14 @@ def batch_update_stage(session: requests.Session, ids: List[int], stage: int = 2
     payload = {"op": "update", "id": ids, "stage": stage}
     r = session.put(f"{API_BASE}/strings", headers=HEADERS, json=payload)
     r.raise_for_status()
-    print(f"成功更新 {{len(ids)}} 个词条的 stage 为 {{stage}}。")
+    print(f"成功更新 {len(ids)} 个词条的 stage 为 {stage}。")
 
 # ==============================
 # 文本提取
 # ==============================
 def remove_compared_key_blocks(text: str, compared_keys: Set[str]) -> str:
     for k in compared_keys:
-        text = re.sub(rf"~\s*{{re.escape(k)}}\s*[\(（].*?[\)）]", "", text, flags=re.S)
+        text = re.sub(rf"~\s*{re.escape(k)}\s*[\(（].*?[\)）]", "", text, flags=re.S)
     return text
 
 def extract_key_pairs(text: str) -> List[Tuple[str, str]]:
@@ -273,7 +273,7 @@ def check_item_types(data: List[Dict[str, Any]]) -> List[str]:
     for en_type, cn_types in item_type_map.items():
         allowed = ALLOWED_MULTIPLE.get(en_type, 1)
         if len(cn_types) > allowed:
-            issues.append(f"English type '{{en_type}}' corresponds to multiple Chinese types: {{sorted(cn_types)}} (allowed {{allowed}})")
+            issues.append(f"English type '{en_type}' corresponds to multiple Chinese types: {sorted(cn_types)} (allowed {allowed})")
 
     missing_keys = [
         entry.get("key")
@@ -310,7 +310,7 @@ def main() -> None:
                 or inc.get("newline_mismatch")
             ]
             save_to_json(filtered, "inconsistencies.json")
-            print(f"发现 {{len(filtered)}} 个格式不一致项，详情见 inconsistencies.json")
+            print(f"发现 {len(filtered)} 个格式不一致项，详情见 inconsistencies.json")
             failed_ids = [inc["id"] for inc in filtered if inc.get("id") is not None]
             batch_update_stage(s, failed_ids, stage=2)
         else:
@@ -324,4 +324,4 @@ def main() -> None:
                 print("所有物品类型一致，无不一致项。")
 
 if __name__ == "__main__":
-    main()\n
+    main()
