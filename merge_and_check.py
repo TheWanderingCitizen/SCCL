@@ -4,6 +4,7 @@ import json
 import requests
 from typing import List, Dict, Any, Set, Tuple
 from collections import Counter
+from requests.adapters import HTTPAdapter, Retry
 
 # ==============================
 # 配置
@@ -30,10 +31,10 @@ HEADERS = {
 RE_KEY_VALUE = re.compile(r"~\s*(\w+)\s*[\(（](.*?)[\)）]", re.S)
 RE_PAREN = re.compile(r"[\(（]([^）\)]*)[）\)]")
 RE_COLON_TO_EOL = re.compile(r"[:：]\s*([^\n\r]*)")
-# 百分比：允许可选正负号与空格，如 "+40 %", "- 5%", "0 %"
-RE_PERCENT_SIGNED = re.compile(r"[+-]?\s*\d+\s*%")
-# 去掉标签外壳但保留内部文本：<EM4>50</EM4> -> 50
-RE_TAGS_STRIP = re.compile(r"</?[^>]+>")
+# 百分比：允许可选正负号与空格与小数/全角％，如 "+40 %", "- 5%", "0 %", "145.8％"
+RE_PERCENT_SIGNED = re.compile(r"[+-]?\s*\d+(?:\.\d+)?\s*[%％]")
+# 去掉标签外壳但保留内部文本：仅删除以字母开头的“类 HTML”标签，保留 <5K> 之类
+RE_TAGS_STRIP = re.compile(r"</?[A-Za-z][^>]*>")
 
 # ==============================
 # 工具函数
@@ -47,7 +48,10 @@ def save_to_json(data: Any, path: str) -> None:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def line_count_including_escaped(text: str) -> int:
-    return text.count("\n") + text.count("\\n")
+    # 统一 CRLF -> LF，再统计真实换行与字面量 \n
+    physical = text.replace("\r\n", "\n").count("\n")
+    escaped = text.count("\\n")
+    return physical + escaped
 
 def first_line(s: str) -> str:
     return s.replace("\\n", "\n").split("\n", 1)[0]
@@ -68,26 +72,43 @@ def should_ignore_key(key: str) -> bool:
         return True
     return any(key.startswith(pfx) for pfx in IGNORE_KEY_PREFIXES)
 
+def _session_with_retries() -> requests.Session:
+    s = requests.Session()
+    retries = Retry(
+        total=3,
+        backoff_factor=0.5,
+        status_forcelist=[500, 502, 503, 504],
+        allowed_methods=["GET", "PUT", "POST"]
+    )
+    s.mount("https://", HTTPAdapter(max_retries=retries))
+    s.mount("http://", HTTPAdapter(max_retries=retries))
+    return s
+
 # ==============================
 # HTTP
 # ==============================
 def fetch_translation_files(session: requests.Session) -> List[List[Dict[str, Any]]]:
     url = f"{API_BASE}/files"
-    r = session.get(url, headers=HEADERS)
+    r = session.get(url, headers=HEADERS, timeout=30)
     r.raise_for_status()
-    out = []
-    for item in r.json():
-        fid = item["id"]
-        dl = session.get(f"{API_BASE}/files/{fid}/translation", headers=HEADERS)
+    files = r.json() or []
+    out: List[List[Dict[str, Any]]] = []
+    for item in files:
+        fid = item.get("id")
+        if fid is None:
+            continue
+        dl = session.get(f"{API_BASE}/files/{fid}/translation", headers=HEADERS, timeout=60)
         dl.raise_for_status()
-        out.append(dl.json())
+        payload = dl.json() or []
+        if isinstance(payload, list):
+            out.append(payload)
     return out
 
 def batch_update_stage(session: requests.Session, ids: List[int], stage: int = 2) -> None:
     if not ids:
         return
     payload = {"op": "update", "id": ids, "stage": stage}
-    r = session.put(f"{API_BASE}/strings", headers=HEADERS, json=payload)
+    r = session.put(f"{API_BASE}/strings", headers=HEADERS, json=payload, timeout=60)
     r.raise_for_status()
     print(f"成功更新 {len(ids)} 个词条的 stage 为 {stage}。")
 
@@ -95,8 +116,10 @@ def batch_update_stage(session: requests.Session, ids: List[int], stage: int = 2
 # 文本提取
 # ==============================
 def remove_compared_key_blocks(text: str, compared_keys: Set[str]) -> str:
+    # 避免跨行/嵌套括号误删：仅在“同一行”内删除 ~key(...) 片段
     for k in compared_keys:
-        text = re.sub(rf"~\s*{re.escape(k)}\s*[\(（].*?[\)）]", "", text, flags=re.S)
+        pattern = rf"~\s*{re.escape(k)}\s*[\(（][^\n\r]*?[\)）]"
+        text = re.sub(pattern, "", text)
     return text
 
 def extract_key_pairs(text: str) -> List[Tuple[str, str]]:
@@ -108,6 +131,8 @@ def strip_tags_keep_inner(s: str) -> str:
 def extract_inspected_parts(text: str, compared_keys: Set[str]) -> Tuple[List[str], List[str]]:
     cleaned = remove_compared_key_blocks(text, compared_keys) if compared_keys else text
     colon_parts = RE_COLON_TO_EOL.findall(cleaned)
+    # 去掉可能是 URL 的“冒号后”部分（如 http:// 中的第二个冒号）
+    colon_parts = [p for p in colon_parts if not re.match(r"\s*//", p)]
     paren_parts = RE_PAREN.findall(cleaned)
     colon_parts = [strip_tags_keep_inner(p) for p in colon_parts]
     paren_parts = [strip_tags_keep_inner(p) for p in paren_parts]
@@ -117,32 +142,34 @@ def extract_inspected_parts(text: str, compared_keys: Set[str]) -> Tuple[List[st
 # 数值与百分比提取
 # ==============================
 def extract_percentages_normalized(parts: List[str]) -> List[str]:
-    """提取百分比，保留正负号、去内部空格，标准化为 +40% / -5% / 0% 形态"""
+    """提取百分比，保留正负号、去内部空格，标准化为 +40% / -5% / 0% 形态（支持全角％与小数）"""
     res: List[str] = []
     for s in parts:
         for m in RE_PERCENT_SIGNED.findall(s):
-            res.append(re.sub(r"\s+", "", m))
+            # 统一去掉内部空格；全角％也统一为半角% 以比较
+            normalized = re.sub(r"\s+", "", m).replace("％", "%")
+            res.append(normalized)
     return res
 
 def strip_percentages(text: str) -> str:
     return RE_PERCENT_SIGNED.sub("", text)
 
 def extract_numbers_from_colon(colon_parts: List[str]) -> List[int]:
-    """仅取冒号后紧跟的第一个整数"""
+    """仅取冒号后紧跟的第一个整数（保留可选正负号）"""
     nums: List[int] = []
     for s in colon_parts:
         s_clean = strip_percentages(s)
-        m = re.match(r"\s*(\d+)", s_clean)
+        m = re.match(r"\s*([+-]?\d+)", s_clean)
         if m:
             nums.append(int(m.group(1)))
     return nums
 
 def extract_numbers_from_paren(paren_parts: List[str]) -> List[int]:
-    """括号段：直接识别所有数字段(\\d+)"""
+    """括号段：直接识别所有整数（保留可选正负号）"""
     nums: List[int] = []
     for s in paren_parts:
         s_clean = strip_percentages(s)
-        nums.extend(int(n) for n in re.findall(r"\d+", s_clean))
+        nums.extend(int(n) for n in re.findall(r"[+-]?\d+", s_clean))
     return nums
 
 # ==============================
@@ -175,23 +202,22 @@ def check_mission_consistency(data: List[Dict[str, Any]]) -> List[Dict[str, Any]
         # 仅 item_* 做“数字 & 百分比”检查
         do_numeric_checks = key.startswith("item_")
 
-        # —— 百分比（现在要求“完全一致”） ———
+        # —— 百分比（完全一致，多重集合相等） ———
         if do_numeric_checks:
             orig_pct = extract_percentages_normalized(orig_colon + orig_paren)
 
-            # 译文先看受检区；若原文有 % 而受检区没抓到，兜底整句
+            # 译文先看受检区；若原文有 % 而受检区没抓到，兜底整句（先去标签）
             trans_pct = extract_percentages_normalized(trans_colon + trans_paren)
             if orig_pct and not trans_pct:
                 trans_pct = extract_percentages_normalized([strip_tags_keep_inner(translation_raw)])
 
-            # 完全一致（多重集合相等），保留符号
             perc_mis = Counter(orig_pct) != Counter(trans_pct)
         else:
             perc_mis = False
             orig_pct = []
             trans_pct = []
 
-        # —— 数字（分开比较；括号仅当原文括号里存在数字时才比较，避免结构性差异误报） ———
+        # —— 数字（分开比较；括号仅当原文括号里存在数字时才比较） ———
         if do_numeric_checks:
             orig_colon_nums = extract_numbers_from_colon(orig_colon)
             trans_colon_nums = extract_numbers_from_colon(trans_colon)
@@ -259,13 +285,12 @@ def check_item_types(data: List[Dict[str, Any]]) -> List[str]:
         or_ = entry.get("original") or ""
         if not tr:
             continue
-        if "Item Type: " in or_ and "物品类型：" in tr:
-            cn_type = first_line(tr.split("物品类型：", 1)[1])
+        if "Item Type: " in or_ and re.search(r"物品类型\s*[:：]", tr):
+            cn_type = first_line(re.split(r"物品类型\s*[:：]", tr, 1)[1])
             en_type = first_line(or_.split("Item Type: ", 1)[1])
             item_type_map.setdefault(en_type, set()).add(cn_type)
 
     # 允许某些 English type 对应多于 1 个中文类型（例如 'Heavy Utility' 允许两种中文对应）
-    # 如果需要增加允许的 English type 或改变允许数量，可在此字典中调整
     ALLOWED_MULTIPLE: Dict[str, int] = {
         "Heavy Utility": 2,
     }
@@ -279,10 +304,10 @@ def check_item_types(data: List[Dict[str, Any]]) -> List[str]:
         entry.get("key")
         for entry in data
         if "Item Type: " in (entry.get("original") or "")
-        and "物品类型：" not in (entry.get("translation") or "")
+        and not re.search(r"物品类型\s*[:：]", (entry.get("translation") or ""))
     ]
     if missing_keys:
-        issues.append("Keys of original texts with 'Item Type: ' but missing '物品类型：' in translation:")
+        issues.append("Keys of original texts with 'Item Type: ' but missing '物品类型：' (or with ':' variant) in translation:")
         issues.extend([str(k) for k in missing_keys])
 
     return issues
@@ -292,7 +317,7 @@ def check_item_types(data: List[Dict[str, Any]]) -> List[str]:
 # ==============================
 def main() -> None:
     ensure_auth()
-    with requests.Session() as s:
+    with _session_with_retries() as s:
         # 1) 获取并合并
         file_data = fetch_translation_files(s)
         merged_data = merge_json_data(*file_data)
@@ -301,17 +326,9 @@ def main() -> None:
         # 2) 一致性检查
         inconsistencies = check_mission_consistency(merged_data)
         if inconsistencies:
-            filtered = [
-                inc for inc in inconsistencies
-                if inc.get("original_mismatches")
-                or inc.get("translation_mismatches")
-                or inc.get("number_mismatches")
-                or inc.get("percentage_mismatches")
-                or inc.get("newline_mismatch")
-            ]
-            save_to_json(filtered, "inconsistencies.json")
-            print(f"发现 {len(filtered)} 个格式不一致项，详情见 inconsistencies.json")
-            failed_ids = [inc["id"] for inc in filtered if inc.get("id") is not None]
+            save_to_json(inconsistencies, "inconsistencies.json")
+            print(f"发现 {len(inconsistencies)} 个格式不一致项，详情见 inconsistencies.json")
+            failed_ids = [inc["id"] for inc in inconsistencies if inc.get("id") is not None]
             batch_update_stage(s, failed_ids, stage=2)
         else:
             print("所有格式内容一致，无不一致项。")
