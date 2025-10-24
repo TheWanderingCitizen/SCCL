@@ -78,7 +78,7 @@ def fetch_translation_files(session: requests.Session) -> List[List[Dict[str, An
     out = []
     for item in r.json():
         fid = item["id"]
-        dl = session.get(f"{API_BASE}/files/{fid}/translation", headers=HEADERS)
+        dl = session.get(f"{API_BASE}/files/{{fid}}/translation", headers=HEADERS)
         dl.raise_for_status()
         out.append(dl.json())
     return out
@@ -89,14 +89,14 @@ def batch_update_stage(session: requests.Session, ids: List[int], stage: int = 2
     payload = {"op": "update", "id": ids, "stage": stage}
     r = session.put(f"{API_BASE}/strings", headers=HEADERS, json=payload)
     r.raise_for_status()
-    print(f"成功更新 {len(ids)} 个词条的 stage 为 {stage}。")
+    print(f"成功更新 {{len(ids)}} 个词条的 stage 为 {{stage}}。")
 
 # ==============================
 # 文本提取
 # ==============================
 def remove_compared_key_blocks(text: str, compared_keys: Set[str]) -> str:
     for k in compared_keys:
-        text = re.sub(rf"~\s*{re.escape(k)}\s*[\(（].*?[\)）]", "", text, flags=re.S)
+        text = re.sub(rf"~\s*{{re.escape(k)}}\s*[\(（].*?[\)）]", "", text, flags=re.S)
     return text
 
 def extract_key_pairs(text: str) -> List[Tuple[str, str]]:
@@ -138,7 +138,7 @@ def extract_numbers_from_colon(colon_parts: List[str]) -> List[int]:
     return nums
 
 def extract_numbers_from_paren(paren_parts: List[str]) -> List[int]:
-    """括号段：直接识别所有数字段（\\d+）"""
+    """括号段：直接识别所有数字段(\\d+)"""
     nums: List[int] = []
     for s in paren_parts:
         s_clean = strip_percentages(s)
@@ -175,7 +175,7 @@ def check_mission_consistency(data: List[Dict[str, Any]]) -> List[Dict[str, Any]
         # 仅 item_* 做“数字 & 百分比”检查
         do_numeric_checks = key.startswith("item_")
 
-        # —— 百分比（现在要求“完全一致”） ——
+        # —— 百分比（现在要求“完全一致”） ———
         if do_numeric_checks:
             orig_pct = extract_percentages_normalized(orig_colon + orig_paren)
 
@@ -191,7 +191,7 @@ def check_mission_consistency(data: List[Dict[str, Any]]) -> List[Dict[str, Any]
             orig_pct = []
             trans_pct = []
 
-        # —— 数字（分开比较；括号仅当原文括号里存在数字时才比较，避免结构性差异误报） ——
+        # —— 数字（分开比较；括号仅当原文括号里存在数字时才比较，避免结构性差异误报） ———
         if do_numeric_checks:
             orig_colon_nums = extract_numbers_from_colon(orig_colon)
             trans_colon_nums = extract_numbers_from_colon(trans_colon)
@@ -207,7 +207,7 @@ def check_mission_consistency(data: List[Dict[str, Any]]) -> List[Dict[str, Any]
             orig_paren_nums = trans_paren_nums = []
             num_mis = False
 
-        # —— 换行（所有 key 检查） ——
+        # —— 换行（所有 key 检查） ———
         nl_orig = line_count_including_escaped(original_raw)
         nl_trans = line_count_including_escaped(translation_raw)
         nl_mis = nl_orig != nl_trans
@@ -264,9 +264,16 @@ def check_item_types(data: List[Dict[str, Any]]) -> List[str]:
             en_type = first_line(or_.split("Item Type: ", 1)[1])
             item_type_map.setdefault(en_type, set()).add(cn_type)
 
+    # 允许某些 English type 对应多于 1 个中文类型（例如 'Heavy Utility' 允许两种中文对应）
+    # 如果需要增加允许的 English type 或改变允许数量，可在此字典中调整
+    ALLOWED_MULTIPLE: Dict[str, int] = {
+        "Heavy Utility": 2,
+    }
+
     for en_type, cn_types in item_type_map.items():
-        if len(cn_types) > 1:
-            issues.append(f"English type '{en_type}' corresponds to multiple Chinese types: {sorted(cn_types)}")
+        allowed = ALLOWED_MULTIPLE.get(en_type, 1)
+        if len(cn_types) > allowed:
+            issues.append(f"English type '{{en_type}}' corresponds to multiple Chinese types: {{sorted(cn_types)}} (allowed {{allowed}})")
 
     missing_keys = [
         entry.get("key")
@@ -303,7 +310,7 @@ def main() -> None:
                 or inc.get("newline_mismatch")
             ]
             save_to_json(filtered, "inconsistencies.json")
-            print(f"发现 {len(filtered)} 个格式不一致项，详情见 inconsistencies.json")
+            print(f"发现 {{len(filtered)}} 个格式不一致项，详情见 inconsistencies.json")
             failed_ids = [inc["id"] for inc in filtered if inc.get("id") is not None]
             batch_update_stage(s, failed_ids, stage=2)
         else:
@@ -317,4 +324,4 @@ def main() -> None:
                 print("所有物品类型一致，无不一致项。")
 
 if __name__ == "__main__":
-    main()
+    main()\n
