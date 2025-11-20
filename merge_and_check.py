@@ -185,8 +185,10 @@ def check_mission_consistency(data: List[Dict[str, Any]]) -> List[Dict[str, Any]
             continue
 
         original_raw = entry.get("original", "") or ""
-        translation_raw = entry.get("translation", "") or ""
+        # —— 这里加 strip：翻译为空或仅空白都跳过检查 ——
+        translation_raw = (entry.get("translation") or "").strip()
         if not translation_raw:
+            # 翻译内容为空：跳过所有检查
             continue
 
         # ~key(...) 配对（所有 key 都做）
@@ -281,7 +283,8 @@ def check_item_types(data: List[Dict[str, Any]]) -> List[str]:
     item_type_map: Dict[str, Set[str]] = {}
     issues: List[str] = []
     for entry in data:
-        tr = entry.get("translation") or ""
+        # 翻译为空或只含空白：跳过物品类型检查
+        tr = (entry.get("translation") or "").strip()
         or_ = entry.get("original") or ""
         if not tr:
             continue
@@ -304,7 +307,10 @@ def check_item_types(data: List[Dict[str, Any]]) -> List[str]:
         entry.get("key")
         for entry in data
         if "Item Type: " in (entry.get("original") or "")
-        and not re.search(r"物品类型\s*[:：]", (entry.get("translation") or ""))
+        and not re.search(
+            r"物品类型\s*[:：]",
+            (entry.get("translation") or "").strip()
+        )
     ]
     if missing_keys:
         issues.append("Keys of original texts with 'Item Type: ' but missing '物品类型：' (or with ':' variant) in translation:")
