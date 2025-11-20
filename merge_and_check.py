@@ -282,12 +282,16 @@ def check_mission_consistency(data: List[Dict[str, Any]]) -> List[Dict[str, Any]
 def check_item_types(data: List[Dict[str, Any]]) -> List[str]:
     item_type_map: Dict[str, Set[str]] = {}
     issues: List[str] = []
+
+    # 先统计类型映射，只处理有翻译内容的条目
     for entry in data:
-        # 翻译为空或只含空白：跳过物品类型检查
-        tr = (entry.get("translation") or "").strip()
         or_ = entry.get("original") or ""
+        tr_raw = entry.get("translation") or ""
+        tr = tr_raw.strip()
         if not tr:
+            # 翻译为空或仅空白：跳过所有物品类型相关检查
             continue
+
         if "Item Type: " in or_ and re.search(r"物品类型\s*[:：]", tr):
             cn_type = first_line(re.split(r"物品类型\s*[:：]", tr, 1)[1])
             en_type = first_line(or_.split("Item Type: ", 1)[1])
@@ -301,20 +305,34 @@ def check_item_types(data: List[Dict[str, Any]]) -> List[str]:
     for en_type, cn_types in item_type_map.items():
         allowed = ALLOWED_MULTIPLE.get(en_type, 1)
         if len(cn_types) > allowed:
-            issues.append(f"English type '{en_type}' corresponds to multiple Chinese types: {sorted(cn_types)} (allowed {allowed})")
+            issues.append(
+                f"English type '{en_type}' corresponds to multiple Chinese types: "
+                f"{sorted(cn_types)} (allowed {allowed})"
+            )
 
-    missing_keys = [
-        entry.get("key")
-        for entry in data
-        if "Item Type: " in (entry.get("original") or "")
-        and not re.search(
-            r"物品类型\s*[:：]",
-            (entry.get("translation") or "").strip()
-        )
-    ]
+    # 这里修正：如果翻译为空，则不计入 missing_keys
+    missing_keys: List[str] = []
+    for entry in data:
+        or_ = entry.get("original") or ""
+        tr_raw = entry.get("translation") or ""
+        tr = tr_raw.strip()
+
+        if "Item Type: " not in or_:
+            continue
+
+        # 翻译为空：直接跳过，不算缺失
+        if not tr:
+            continue
+
+        if not re.search(r"物品类型\s*[:：]", tr):
+            missing_keys.append(str(entry.get("key")))
+
     if missing_keys:
-        issues.append("Keys of original texts with 'Item Type: ' but missing '物品类型：' (or with ':' variant) in translation:")
-        issues.extend([str(k) for k in missing_keys])
+        issues.append(
+            "Keys of original texts with 'Item Type: ' but missing '物品类型：' "
+            "(or with ':' variant) in translation:"
+        )
+        issues.extend(missing_keys)
 
     return issues
 
