@@ -16,3 +16,5 @@ match_rules:
       - '^AsteroidBase_P\d+_L\d+$'
       # 焰联-行政机库匹配规则
       - 'ExecutiveHangar_P\d+_L\d+$'
+      # 斯坦顿废弃前进基地
+      - '^FOB_Abandoned_Stanton.*?_FOB\d{1,}(,P){0,1}$'
