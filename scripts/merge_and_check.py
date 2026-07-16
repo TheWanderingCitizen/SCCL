@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -14,12 +15,15 @@ from requests.adapters import HTTPAdapter, Retry
 # ==============================
 PROJECT_ID = 8340
 API_BASE = f"https://paratranz.cn/api/projects/{PROJECT_ID}"
+COMMENTS_API_URL = "https://paratranz.cn/api/comments"
 AUTHORIZATION = os.getenv("AUTHORIZATION")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REPORT_DIR = REPO_ROOT / "reports" / "translation-check"
 MERGED_DATA_PATH = REPORT_DIR / "merged_data.json"
 REPORT_JSON_PATH = REPORT_DIR / "report.json"
 REPORT_MARKDOWN_PATH = REPORT_DIR / "report.md"
+AUTO_COMMENT_PREFIX = "<!-- merge_and_check:"
+COMMENT_MAX_LENGTH = 500
 
 # 忽略检查：精确 key 与前缀
 IGNORE_KEYS = {
@@ -86,8 +90,10 @@ def _session_with_retries() -> requests.Session:
     retries = Retry(
         total=3,
         backoff_factor=0.5,
-        status_forcelist=[500, 502, 503, 504],
-        allowed_methods=["GET", "PUT", "POST"]
+        status_forcelist=[429, 500, 502, 503, 504],
+        # 评论 POST 不是幂等操作，避免网络重试导致重复评论。
+        allowed_methods=["GET", "PUT"],
+        respect_retry_after_header=True,
     )
     s.mount("https://", HTTPAdapter(max_retries=retries))
     s.mount("http://", HTTPAdapter(max_retries=retries))
@@ -122,6 +128,119 @@ def batch_update_stage(session: requests.Session, ids: List[int], stage: int = 2
     r = session.put(f"{API_BASE}/strings", headers=HEADERS, json=payload, timeout=60)
     r.raise_for_status()
     print(f"成功更新 {len(ids)} 个词条的 stage 为 {stage}。")
+
+
+def _comment_signature(issue: Dict[str, Any]) -> str:
+    compared = {
+        "issue_types": issue.get("issue_types", []),
+        "original_mismatches": issue.get("original_mismatches", []),
+        "translation_mismatches": issue.get("translation_mismatches", []),
+        "number_mismatches": issue.get("number_mismatches", {}),
+        "percentage_mismatches": issue.get("percentage_mismatches", {}),
+        "newline_mismatch": issue.get("newline_mismatch", {}),
+    }
+    raw = json.dumps(compared, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def build_issue_comment(issue: Dict[str, Any]) -> str:
+    """把检查结果转换为 ParaTranz 词条评论，并附上用于防重复的稳定标记。"""
+    marker = f"{AUTO_COMMENT_PREFIX}{_comment_signature(issue)} -->"
+    lines = [marker, "**自动格式检查：已标记为“有疑问”**"]
+
+    if "key_placeholder" in issue.get("issue_types", []):
+        orig = issue.get("original_mismatches", [])
+        trans = issue.get("translation_mismatches", [])
+        lines.append(f"- `~key(...)` 占位符不一致：原文缺失于译文 {orig}；译文多出 {trans}")
+
+    if "number" in issue.get("issue_types", []):
+        number_mismatches = issue.get("number_mismatches", {})
+        for position, values in number_mismatches.items():
+            label = "冒号后" if position == "colon" else "括号内"
+            lines.append(
+                f"- {label}数字不一致：原文 {values.get('original', [])}；"
+                f"译文 {values.get('translation', [])}"
+            )
+
+    if "percentage" in issue.get("issue_types", []):
+        percentages = issue.get("percentage_mismatches", {})
+        lines.append(
+            "- 百分比不一致：原文 "
+            f"{percentages.get('original_percentages_explicit', [])}；"
+            f"译文 {percentages.get('translation_percentages', [])}"
+        )
+
+    if "newline" in issue.get("issue_types", []):
+        newlines = issue.get("newline_mismatch", {})
+        lines.append(
+            f"- 换行数量不一致：原文 {newlines.get('original_newlines', 0)}；"
+            f"译文 {newlines.get('translation_newlines', 0)}"
+        )
+
+    comment = "\n".join(lines)
+    if len(comment) > COMMENT_MAX_LENGTH:
+        comment = comment[:COMMENT_MAX_LENGTH - 1].rstrip() + "…"
+    return comment
+
+
+def fetch_string_comments(session: requests.Session, string_id: int) -> List[Dict[str, Any]]:
+    r = session.get(
+        COMMENTS_API_URL,
+        headers=HEADERS,
+        params={"type": "text", "tid": string_id, "pageSize": 100},
+        timeout=30,
+    )
+    r.raise_for_status()
+    payload = r.json() or {}
+    if isinstance(payload, list):
+        return payload
+    results = payload.get("results", []) if isinstance(payload, dict) else []
+    return results if isinstance(results, list) else []
+
+
+def add_issue_comments(
+    session: requests.Session,
+    issues: List[Dict[str, Any]],
+) -> Tuple[List[int], List[int], List[Dict[str, Any]]]:
+    """发布异常原因；返回新增、已存在和失败的词条 ID。"""
+    created_ids: List[int] = []
+    existing_ids: List[int] = []
+    errors: List[Dict[str, Any]] = []
+
+    for issue in issues:
+        string_id = issue.get("id")
+        if string_id is None:
+            continue
+        comment = build_issue_comment(issue)
+        marker = comment.split("\n", 1)[0]
+        try:
+            comments = fetch_string_comments(session, string_id)
+            if any(marker in str(item.get("content", "")) for item in comments):
+                existing_ids.append(string_id)
+                continue
+
+            r = session.post(
+                COMMENTS_API_URL,
+                headers=HEADERS,
+                json={"type": "text", "tid": string_id, "content": comment},
+                timeout=30,
+            )
+            r.raise_for_status()
+            created_ids.append(string_id)
+        except requests.RequestException as exc:
+            errors.append({
+                "id": string_id,
+                "key": issue.get("key"),
+                "error": str(exc),
+            })
+
+    if created_ids:
+        print(f"成功为 {len(created_ids)} 个有疑问词条添加原因评论。")
+    if existing_ids:
+        print(f"跳过 {len(existing_ids)} 个已存在相同原因评论的词条。")
+    if errors:
+        print(f"有 {len(errors)} 个词条的原因评论添加失败，详情见报告。")
+    return created_ids, existing_ids, errors
 
 # ==============================
 # 文本提取
@@ -384,6 +503,9 @@ def build_report(
     format_issues: List[Dict[str, Any]],
     item_type_issues: List[Dict[str, Any]],
     updated_stage_ids: List[int],
+    commented_ids: List[int],
+    existing_comment_ids: List[int],
+    comment_errors: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     issue_counts: Counter[str] = Counter()
     for issue in format_issues:
@@ -402,10 +524,14 @@ def build_report(
             "item_type_issues": len(item_type_issues),
             "total_issues": total_issues,
             "stage_updated_entries": len(updated_stage_ids),
+            "comments_added": len(commented_ids),
+            "comments_already_present": len(existing_comment_ids),
+            "comment_errors": len(comment_errors),
         },
         "issue_counts": dict(sorted(issue_counts.items())),
         "format_issues": format_issues,
         "item_type_issues": item_type_issues,
+        "comment_errors": comment_errors,
     }
 
 
@@ -427,6 +553,9 @@ def render_markdown_report(report: Dict[str, Any], max_rows: int = 100) -> str:
         f"| 物品类型问题 | {summary['item_type_issues']} |",
         f"| 问题总数 | **{summary['total_issues']}** |",
         f"| 已更新至 stage 2 | {summary['stage_updated_entries']} |",
+        f"| 已添加原因评论 | {summary['comments_added']} |",
+        f"| 已存在相同评论 | {summary['comments_already_present']} |",
+        f"| 评论添加失败 | {summary['comment_errors']} |",
     ]
 
     if report["issue_counts"]:
@@ -474,6 +603,17 @@ def render_markdown_report(report: Dict[str, Any], max_rows: int = 100) -> str:
         if len(item_type_issues) > max_rows:
             lines.extend(["", f"> 仅展示前 {max_rows} 项；完整详情见 `report.json`。"])
 
+    comment_errors = report["comment_errors"]
+    if comment_errors:
+        lines.extend(["", "## 原因评论添加失败", ""])
+        for error in comment_errors[:max_rows]:
+            lines.append(
+                f"- `{markdown_cell(error.get('key'), 60)}`（ID {error.get('id', '')}）："
+                f"{markdown_cell(error.get('error'), 160)}"
+            )
+        if len(comment_errors) > max_rows:
+            lines.extend(["", f"> 仅展示前 {max_rows} 项；完整详情见 `report.json`。"])
+
     lines.extend(["", f"_报告生成时间（UTC）：{report['generated_at']}_", ""])
     return "\n".join(lines)
 
@@ -500,6 +640,10 @@ def main() -> None:
         })
         if failed_ids:
             batch_update_stage(s, failed_ids, stage=2)
+        commented_ids, existing_comment_ids, comment_errors = add_issue_comments(
+            s,
+            format_issues,
+        )
 
         report = build_report(
             file_count,
@@ -507,6 +651,9 @@ def main() -> None:
             format_issues,
             item_type_issues,
             failed_ids,
+            commented_ids,
+            existing_comment_ids,
+            comment_errors,
         )
         save_report(report)
 
@@ -516,6 +663,8 @@ def main() -> None:
         print(f"合并词条: {summary['merged_entries']}")
         print(f"格式异常: {summary['format_issue_entries']}")
         print(f"物品类型问题: {summary['item_type_issues']}")
+        print(f"新增原因评论: {summary['comments_added']}")
+        print(f"评论添加失败: {summary['comment_errors']}")
         print(f"报告: {REPORT_MARKDOWN_PATH}")
 
 if __name__ == "__main__":
