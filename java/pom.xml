@@ -14,10 +14,10 @@
         <java.version>24</java.version>
         <maven.compiler.source>24</maven.compiler.source>
         <maven.compiler.target>24</maven.compiler.target>
-        <jackson.version>2.18.1</jackson.version>
-        <jgit.version>7.0.0.202409031743-r</jgit.version>
+        <jackson.version>2.18.9</jackson.version>
+        <jgit.version>7.0.1.202505221510-r</jgit.version>
         <slf4j.version>1.7.36</slf4j.version>
-        <log4j.version>2.24.1</log4j.version>
+        <log4j.version>2.25.4</log4j.version>
         <awssdk.version>2.29.6</awssdk.version>
         <junit.jupiter.version>5.11.4</junit.jupiter.version>
         <pinyin.version>0.4.0</pinyin.version>
