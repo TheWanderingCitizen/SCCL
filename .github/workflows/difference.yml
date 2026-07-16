@@ -2,40 +2,109 @@ name: 对比ini差异
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
-      - "global.ini"  # 仅在 global.ini 修改时触发
-  workflow_dispatch:   # 增加手动触发器
+      - "global.ini"
+
+  repository_dispatch:
+    types: [sccl_global_ini_ready]
+
+  workflow_dispatch:
+    inputs:
+      version_name:
+        required: false
+        type: string
+      source_path:
+        required: false
+        type: string
+
+permissions:
+  contents: write
 
 jobs:
   convert-compare-json:
     runs-on: ubuntu-latest
+    env:
+      VERSION_NAME: ${{ github.event.client_payload.version_name || inputs.version_name || '' }}
+      SOURCE_PATH: ${{ github.event.client_payload.source_path || inputs.source_path || '' }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4  # 使用 v4 版本
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4  # 使用 v4 版本
-      with:
-        node-version: '20'  # 使用 Node.js 20 版本
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-    - name: Install dependencies
-      run: |
-        npm install iconv-lite ini axios
+      - name: Validate event inputs
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "repository_dispatch" ]] && \
+             { [[ -z "$VERSION_NAME" ]] || [[ -z "$SOURCE_PATH" ]]; }; then
+            echo "repository_dispatch requires version_name and source_path." >&2
+            exit 1
+          fi
 
-    - name: Run Node.js script
-      run: |
-        node script.js
-      env:
-        AUTHORIZATION: ${{ secrets.AUTHORIZATION }}
-        
-    - name: Upload JSON files
-      uses: actions/upload-artifact@v4  # 使用 v4 版本
-      with:
-        name: json_files_zip
-        path: |
-          global.json
-          final.json
-          difference.json
+          if [[ -n "$SOURCE_PATH" && ! "$SOURCE_PATH" =~ ^worker-inbox/[^/]+\.ini$ ]]; then
+            echo "Invalid source_path: $SOURCE_PATH" >&2
+            exit 1
+          fi
+
+          node - <<'NODE'
+          const version = process.env.VERSION_NAME;
+          if (version && (/[<>:"/\\|?*\x00-\x1f]/.test(version) || /[. ]$/.test(version))) {
+            throw new Error(`version_name contains invalid filename characters: ${version}`);
+          }
+          NODE
+
+      - name: Sync and remove Worker input
+        if: env.SOURCE_PATH != ''
+        shell: bash
+        run: |
+          if [[ ! -f "$SOURCE_PATH" ]]; then
+            echo "Source file does not exist: $SOURCE_PATH" >&2
+            exit 1
+          fi
+
+          if ! git ls-files --error-unmatch -- "$SOURCE_PATH" >/dev/null 2>&1; then
+            echo "Source file is not tracked by Git: $SOURCE_PATH" >&2
+            exit 1
+          fi
+
+          cp -- "$SOURCE_PATH" global.ini
+          rm -- "$SOURCE_PATH"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- global.ini "$SOURCE_PATH"
+          git commit -m "Sync global.ini for ${VERSION_NAME:-unknown version}"
+          git push origin HEAD:main
+
+      - name: Install dependencies
+        run: npm install axios form-data
+
+      - name: Generate difference and upload to ParaTranz
+        id: difference
+        shell: bash
+        env:
+          AUTHORIZATION: ${{ secrets.AUTHORIZATION }}
+        run: |
+          if [[ -n "$VERSION_NAME" ]]; then
+            node scripts/generate_difference.js "$VERSION_NAME"
+          else
+            node scripts/generate_difference.js
+          fi
+
+      - name: Upload JSON files
+        uses: actions/upload-artifact@v4
+        with:
+          name: json_files_zip
+          path: |
+            global.json
+            final.json
+            ${{ steps.difference.outputs.file_name }}

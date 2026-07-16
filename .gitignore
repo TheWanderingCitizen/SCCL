@@ -24,3 +24,5 @@ Thumbs.db
 # Project specific
 merged_data.json
 inconsistencies.json
+/java/target/
+/reports/

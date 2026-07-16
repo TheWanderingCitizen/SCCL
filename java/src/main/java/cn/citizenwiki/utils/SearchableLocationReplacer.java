@@ -26,7 +26,7 @@ public class SearchableLocationReplacer {
 
     private static final Logger logger = LoggerFactory.getLogger(FullTranslationProcessor.class);
 
-    private static final String CONFIG_FILE_NAME = "地点双语任务地点覆盖替换配置.yaml";
+    private static final String CONFIG_FILE_NAME = "规则配置/地点双语任务地点覆盖替换配置.yaml";
 
     private static final TranslationRuleProcessor RULE_PROCESSOR;
 
