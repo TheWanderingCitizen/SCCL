@@ -10,6 +10,11 @@ from typing import Any, Dict, List, Set, Tuple
 import requests
 from requests.adapters import HTTPAdapter, Retry
 
+try:
+    from format_consistency_advisory import build_format_consistency_advisory
+except ImportError:
+    from scripts.format_consistency_advisory import build_format_consistency_advisory
+
 # ==============================
 # 配置
 # ==============================
@@ -104,12 +109,13 @@ def _session_with_retries() -> requests.Session:
 # ==============================
 def fetch_translation_files(
     session: requests.Session,
-) -> Tuple[List[List[Dict[str, Any]]], int]:
+) -> Tuple[List[List[Dict[str, Any]]], int, List[Dict[str, Any]]]:
     url = f"{API_BASE}/files"
     r = session.get(url, headers=HEADERS, timeout=30)
     r.raise_for_status()
     files = r.json() or []
     out: List[List[Dict[str, Any]]] = []
+    advisory_corpus: List[Dict[str, Any]] = []
     for item in files:
         fid = item.get("id")
         if fid is None:
@@ -119,7 +125,17 @@ def fetch_translation_files(
         payload = dl.json() or []
         if isinstance(payload, list):
             out.append(payload)
-    return out, len(files)
+            source_file = {
+                "id": fid,
+                "name": item.get("name"),
+            }
+            for entry in payload:
+                if not isinstance(entry, dict):
+                    continue
+                advisory_entry = dict(entry)
+                advisory_entry["_source_file"] = source_file
+                advisory_corpus.append(advisory_entry)
+    return out, len(files), advisory_corpus
 
 def batch_update_stage(session: requests.Session, ids: List[int], stage: int = 2) -> None:
     if not ids:
@@ -502,6 +518,7 @@ def build_report(
     merged_data: List[Dict[str, Any]],
     format_issues: List[Dict[str, Any]],
     item_type_issues: List[Dict[str, Any]],
+    format_consistency: Dict[str, Any],
     updated_stage_ids: List[int],
     commented_ids: List[int],
     existing_comment_ids: List[int],
@@ -512,6 +529,7 @@ def build_report(
         issue_counts.update(issue["issue_types"])
     issue_counts.update(issue["issue_type"] for issue in item_type_issues)
 
+    # 格式一致性是附加提示：不得参与正式失败状态、stage 更新或评论。
     total_issues = len(format_issues) + len(item_type_issues)
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -523,6 +541,7 @@ def build_report(
             "format_issue_entries": len(format_issues),
             "item_type_issues": len(item_type_issues),
             "total_issues": total_issues,
+            "format_inconsistency_findings": format_consistency.get("finding_count", 0),
             "stage_updated_entries": len(updated_stage_ids),
             "comments_added": len(commented_ids),
             "comments_already_present": len(existing_comment_ids),
@@ -531,6 +550,7 @@ def build_report(
         "issue_counts": dict(sorted(issue_counts.items())),
         "format_issues": format_issues,
         "item_type_issues": item_type_issues,
+        "format_inconsistency": format_consistency,
         "comment_errors": comment_errors,
     }
 
@@ -552,6 +572,7 @@ def render_markdown_report(report: Dict[str, Any], max_rows: int = 100) -> str:
         f"| 格式异常词条 | {summary['format_issue_entries']} |",
         f"| 物品类型问题 | {summary['item_type_issues']} |",
         f"| 问题总数 | **{summary['total_issues']}** |",
+        f"| 格式不统一提示（不阻断） | {summary['format_inconsistency_findings']} |",
         f"| 已更新至 stage 2 | {summary['stage_updated_entries']} |",
         f"| 已添加原因评论 | {summary['comments_added']} |",
         f"| 已存在相同评论 | {summary['comments_already_present']} |",
@@ -603,6 +624,24 @@ def render_markdown_report(report: Dict[str, Any], max_rows: int = 100) -> str:
         if len(item_type_issues) > max_rows:
             lines.extend(["", f"> 仅展示前 {max_rows} 项；完整详情见 `report.json`。"])
 
+    format_consistency = report.get("format_inconsistency", {})
+    consistency_findings = format_consistency.get("findings", [])
+    if consistency_findings:
+        lines.extend(["", "## 格式不统一", ""])
+        findings_by_reason: Dict[str, List[Dict[str, Any]]] = {}
+        for finding in consistency_findings:
+            reason = str(finding.get("reason") or finding.get("issue_type") or "其他")
+            findings_by_reason.setdefault(reason, []).append(finding)
+        for reason, findings in findings_by_reason.items():
+            lines.extend([f"### {reason}", ""])
+            for finding in findings:
+                keys = "、".join(
+                    f"`{markdown_cell(key, 100)}`" for key in finding.get("keys", [])
+                )
+                if keys:
+                    lines.append(f"- {keys}")
+            lines.append("")
+
     comment_errors = report["comment_errors"]
     if comment_errors:
         lines.extend(["", "## 原因评论添加失败", ""])
@@ -629,12 +668,13 @@ def save_report(report: Dict[str, Any]) -> None:
 def main() -> None:
     ensure_auth()
     with _session_with_retries() as s:
-        file_data, file_count = fetch_translation_files(s)
+        file_data, file_count, advisory_corpus = fetch_translation_files(s)
         merged_data = merge_json_data(*file_data)
         save_to_json(merged_data, MERGED_DATA_PATH)
 
         format_issues = check_mission_consistency(merged_data)
         item_type_issues = check_item_types(merged_data)
+        format_consistency = build_format_consistency_advisory(advisory_corpus)
         failed_ids = sorted({
             issue["id"] for issue in format_issues if issue.get("id") is not None
         })
@@ -650,6 +690,7 @@ def main() -> None:
             merged_data,
             format_issues,
             item_type_issues,
+            format_consistency,
             failed_ids,
             commented_ids,
             existing_comment_ids,
