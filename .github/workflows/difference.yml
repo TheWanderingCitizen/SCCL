@@ -21,6 +21,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: global-ini-main
+  cancel-in-progress: false
+
 jobs:
   convert-compare-json:
     runs-on: ubuntu-latest
@@ -62,7 +66,8 @@ jobs:
           }
           NODE
 
-      - name: Sync and remove Worker input
+      - name: Sync or discard Worker input
+        id: worker_sync
         if: env.SOURCE_PATH != ''
         shell: bash
         run: |
@@ -76,20 +81,53 @@ jobs:
             exit 1
           fi
 
-          cp -- "$SOURCE_PATH" global.ini
+          source_blob=$(git hash-object -- "$SOURCE_PATH")
+          current_blob=$(git rev-parse HEAD:global.ini)
+          decision=accepted
+          should_process=true
+
+          if [[ "$source_blob" == "$current_blob" ]]; then
+            decision=duplicate_current
+            should_process=false
+          else
+            while IFS= read -r revision; do
+              historical_blob=$(git rev-parse "$revision:global.ini" 2>/dev/null || true)
+              if [[ "$source_blob" == "$historical_blob" ]]; then
+                decision=stale_history
+                should_process=false
+                break
+              fi
+            done < <(git log --format=%H HEAD -- global.ini)
+          fi
+
+          if [[ "$should_process" == true ]]; then
+            cp -- "$SOURCE_PATH" global.ini
+          else
+            echo "Discarding Worker input ($decision); global.ini remains unchanged."
+          fi
+
           rm -- "$SOURCE_PATH"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- global.ini "$SOURCE_PATH"
-          git commit -m "Sync global.ini for ${VERSION_NAME:-unknown version}"
+          if [[ "$should_process" == true ]]; then
+            git commit -m "Sync global.ini for ${VERSION_NAME:-unknown version}"
+          else
+            git commit -m "Discard $decision Worker input for ${VERSION_NAME:-unknown version}"
+          fi
           git push origin HEAD:main
 
+          echo "should_process=$should_process" >> "$GITHUB_OUTPUT"
+          echo "decision=$decision" >> "$GITHUB_OUTPUT"
+
       - name: Install dependencies
+        if: steps.worker_sync.outputs.should_process != 'false'
         run: npm install axios form-data
 
       - name: Generate difference and upload to ParaTranz
         id: difference
+        if: steps.worker_sync.outputs.should_process != 'false'
         shell: bash
         env:
           AUTHORIZATION: ${{ secrets.AUTHORIZATION }}
@@ -101,6 +139,7 @@ jobs:
           fi
 
       - name: Upload JSON files
+        if: steps.worker_sync.outputs.should_process != 'false'
         uses: actions/upload-artifact@v4
         with:
           name: json_files_zip
