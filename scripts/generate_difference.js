@@ -2,6 +2,14 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
+const {
+    buildDifferences,
+    decodeIniBuffer,
+    detectDifferenceMode,
+    parseIniContent,
+    partitionEncodingDamagedItems,
+    toGlobalJsonItems
+} = require('./difference_utils');
 
 const PROJECT_ID = 8340;
 const PARATRANZ_API_BASE = 'https://paratranz.cn/api';
@@ -111,59 +119,43 @@ async function uploadDifferenceFile(filePath) {
     return response.data;
 }
 
-// 读取并转换 INI 文件为 JSON
+// 读取并转换 INI 文件为 JSON。英文原文和中文汉化文件都支持；
+// 默认根据值中汉字占比识别，也可用 DIFFERENCE_MODE=source|translation 强制指定。
 function convertIniToJson() {
-    // 读取 INI 文件的二进制数据
     const iniContentBuffer = fs.readFileSync('global.ini');
-
-    // 计算替换后的缓冲区大小
-    let estimatedSize = iniContentBuffer.length;
-    for (let i = 0; i < iniContentBuffer.length; i++) {
-        if (iniContentBuffer[i] === 0xA0 && (i === 0 || iniContentBuffer[i - 1] !== 0xC2)) {
-            estimatedSize++;
-        }
+    const decoded = decodeIniBuffer(iniContentBuffer);
+    const parsedItems = parseIniContent(decoded.text);
+    const partitioned = partitionEncodingDamagedItems(parsedItems);
+    if (partitioned.validItems.length === 0) {
+        throw new Error('global.ini 中没有可用于比较的有效条目');
     }
 
-    // 创建一个新的缓冲区来存储替换后的内容
-    const resultBuffer = Buffer.alloc(estimatedSize);
-    let offset = 0;
-
-    // 遍历 iniContentBuffer 中的每个字节
-    for (let i = 0; i < iniContentBuffer.length; i++) {
-        if (iniContentBuffer[i] === 0xA0 && (i === 0 || iniContentBuffer[i - 1] !== 0xC2)) {
-            // 将单独的 A0 替换为 C2 A0
-            resultBuffer[offset++] = 0xC2;
-            resultBuffer[offset++] = 0xA0;
-        } else {
-            // 否则，直接复制字节
-            resultBuffer[offset++] = iniContentBuffer[i];
-        }
-    }
-
-    // 将替换后的缓冲区转换为字符串
-    const iniContent = resultBuffer.toString('utf-8');
-
-    const lines = iniContent.split('\n');
-    const jsonArray = [];
-
-    // 处理 INI 文件的每一行
-    lines.forEach(line => {
-        if (line.includes('=')) {
-            const [key, ...valueParts] = line.split('=');
-            const original = valueParts.join('=').trim(); // 处理可能包含等号的值
-            jsonArray.push({
-                key: key.trim(),
-                original: original,
-                translation: '',
-                context: ''
-            });
-        }
-    });
+    const detected = detectDifferenceMode(partitioned.validItems, process.env.DIFFERENCE_MODE || 'auto');
+    const jsonArray = toGlobalJsonItems(partitioned.validItems, detected.mode);
 
     // 保存为 JSON 文件
     const jsonContent = JSON.stringify(jsonArray, null, 2);
     fs.writeFileSync('global.json', jsonContent, { encoding: 'utf-8', flag: 'w' });
+    const modeDescription = detected.mode === 'translation' ? '汉化差异' : '原文差异';
+    const ratioDescription = detected.hanValueRatio === null
+        ? '手动指定'
+        : `含汉字值占比 ${(detected.hanValueRatio * 100).toFixed(2)}%`;
+    console.log(`global.ini 编码: ${decoded.encoding}`);
+    if (decoded.repairedOffsets.length > 0) {
+        console.warn(
+            `已按 Windows-1252 修复 ${decoded.repairedOffsets.length} 个孤立字节，`
+            + `首个字节偏移: ${decoded.repairedOffsets.slice(0, 10).join(', ')}`
+        );
+    }
+    if (partitioned.damagedItems.length > 0) {
+        console.warn(
+            `已跳过 ${partitioned.damagedItems.length} 条包含 U+FFFD 替换字符的受损文本，`
+            + `避免产生假差异。key: ${partitioned.damagedItems.slice(0, 20).map(item => item.key).join(', ')}`
+        );
+    }
+    console.log(`差异模式: ${modeDescription}（${ratioDescription}）`);
     console.log('INI 文件已转换为 JSON 并保存到 global.json');
+    return detected.mode;
 }
 
 // 获取所有文件 ID 列表，并按创建时间排序
@@ -223,28 +215,21 @@ function mergeJsonData(allData) {
     return Object.values(mergedData);
 }
 
-// 保存 global.json 中与 final.json 有差异的内容，忽略前后空格
-function saveDifferences(outputFileName) {
-    // 读取并解析 JSON 文件，移除 BOM
+// 保存 global.json 中与 final.json 有差异的内容。
+function saveDifferences(outputFileName, differenceMode) {
     const globalJson = JSON.parse(fs.readFileSync('global.json', 'utf-8'));
     const finalJson = JSON.parse(fs.readFileSync('final.json', 'utf-8'));
-
-    const finalByKey = new Map(finalJson.map(item => [item.key, item]));
-    const differences = globalJson.filter(gItem => {
-        const fItem = finalByKey.get(gItem.key);
-
-        if (!fItem) {
-            // 如果 final.json 中不存在对应的 key，则视为差异
-            return true;
-        }
-
-        // 比较时移除空白符并处理换行符
-        return gItem.original.trim().replace(/\s+/g, ' ') !== fItem.original.trim().replace(/\s+/g, ' ');
-    });
+    const result = buildDifferences(globalJson, finalJson, differenceMode);
 
     const outputPath = path.resolve(process.cwd(), outputFileName);
-    fs.writeFileSync(outputPath, JSON.stringify(differences, null, 2), { encoding: 'utf-8', flag: 'w' });
-    console.log(`global.json 中的差异已保存到 ${outputFileName}`);
+    fs.writeFileSync(outputPath, JSON.stringify(result.differences, null, 2), { encoding: 'utf-8', flag: 'w' });
+    console.log(`已保存 ${result.differences.length} 条差异到 ${outputFileName}`);
+    if (result.missingKeys.length > 0) {
+        console.warn(
+            `跳过 ${result.missingKeys.length} 个 ParaTranz 中不存在的汉化 key，`
+            + `请先上传对应英文原文。示例: ${result.missingKeys.slice(0, 10).join(', ')}`
+        );
+    }
     return outputPath;
 }
 
@@ -254,7 +239,7 @@ async function main() {
         const version = getVersionArgument();
         const differenceFileName = getDifferenceFileName(version);
 
-        convertIniToJson();
+        const differenceMode = convertIniToJson();
 
         const allData = await fetchFileData();
 
@@ -266,7 +251,7 @@ async function main() {
         console.log('数据已合并并保存到 final.json');
 
         // 保存差异；传入版本号时，例如输出 "4.9.0 PTU 12218630.json"。
-        const differenceFilePath = saveDifferences(differenceFileName);
+        const differenceFilePath = saveDifferences(differenceFileName, differenceMode);
 
         // 上传 difference 文件到 ParaTranz。
         await uploadDifferenceFile(differenceFilePath);
