@@ -1,10 +1,9 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const {
+    assertSourceOnlyItems,
     buildDifferences,
     decodeIniBuffer,
-    detectDifferenceMode,
-    normalizeForComparison,
     parseIniContent,
     partitionEncodingDamagedItems,
     toGlobalJsonItems
@@ -53,23 +52,21 @@ test('isolates text that was already irreversibly decoded', () => {
     assert.deepEqual(partitioned.damagedItems, [{ key: 'Bad', value: 'damaged � text' }]);
 });
 
-test('detects source and translation files by value language', () => {
-    const sourceItems = Array.from({ length: 30 }, (_, index) => ({
-        key: `Source_${index}`,
-        value: `English source ${index}`
-    }));
-    const translationItems = Array.from({ length: 30 }, (_, index) => ({
-        key: `Translation_${index}`,
-        value: `中文汉化 ${index}`
-    }));
-
-    assert.equal(detectDifferenceMode(sourceItems).mode, 'source');
-    assert.equal(detectDifferenceMode(translationItems).mode, 'translation');
-    assert.equal(detectDifferenceMode(sourceItems, 'translation').mode, 'translation');
+test('accepts English source items', () => {
+    assert.doesNotThrow(() => assertSourceOnlyItems([
+        { key: 'Source_Key', value: 'English source' },
+        { key: 'ui_Japanese', value: '日本' }
+    ]));
 });
 
-test('normalizes Unicode composition and whitespace for comparison', () => {
-    assert.equal(normalizeForComparison('  Cafe\u0301\r\nname '), normalizeForComparison('Café name'));
+test('rejects any Chinese content before comparison', () => {
+    assert.throws(
+        () => assertSourceOnlyItems([
+            { key: 'Good_Key', value: 'English source' },
+            { key: 'Wrong_Key', value: '错误上传的汉化文本' }
+        ]),
+        /包含 1 条中文内容.*原文差异流程已停止/
+    );
 });
 
 test('builds source differences against ParaTranz originals', () => {
@@ -77,34 +74,12 @@ test('builds source differences against ParaTranz originals', () => {
         { key: 'Same', value: 'Same source' },
         { key: 'Changed', value: 'New source' },
         { key: 'New', value: 'Brand new source' }
-    ], 'source');
+    ]);
     const finalItems = [
         { key: 'Same', original: 'Same source', translation: '相同' },
         { key: 'Changed', original: 'Old source', translation: '旧翻译' }
     ];
-    const result = buildDifferences(globalItems, finalItems, 'source');
+    const differences = buildDifferences(globalItems, finalItems);
 
-    assert.deepEqual(result.differences.map(item => item.key), ['Changed', 'New']);
-    assert.deepEqual(result.missingKeys, []);
-});
-
-test('builds translation differences with the ParaTranz original field', () => {
-    const globalItems = toGlobalJsonItems([
-        { key: 'Same', value: '相同翻译' },
-        { key: 'Changed', value: '新翻译' },
-        { key: 'Unknown', value: '未知翻译' }
-    ], 'translation');
-    const finalItems = [
-        { key: 'Same', original: 'Same', translation: '相同翻译' },
-        { key: 'Changed', original: 'Changed source', translation: '旧翻译', context: 'ctx' }
-    ];
-    const result = buildDifferences(globalItems, finalItems, 'translation');
-
-    assert.deepEqual(result.differences, [{
-        key: 'Changed',
-        original: 'Changed source',
-        translation: '新翻译',
-        context: 'ctx'
-    }]);
-    assert.deepEqual(result.missingKeys, ['Unknown']);
+    assert.deepEqual(differences.map(item => item.key), ['Changed', 'New']);
 });

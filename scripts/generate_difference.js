@@ -3,9 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
 const {
+    assertSourceOnlyItems,
     buildDifferences,
     decodeIniBuffer,
-    detectDifferenceMode,
     parseIniContent,
     partitionEncodingDamagedItems,
     toGlobalJsonItems
@@ -119,8 +119,8 @@ async function uploadDifferenceFile(filePath) {
     return response.data;
 }
 
-// 读取并转换 INI 文件为 JSON。英文原文和中文汉化文件都支持；
-// 默认根据值中汉字占比识别，也可用 DIFFERENCE_MODE=source|translation 强制指定。
+// 读取并转换英文原文 INI 文件为 JSON。
+// 此流程只比较原文；检测到任何中文内容时立即停止，防止误传汉化文件。
 function convertIniToJson() {
     const iniContentBuffer = fs.readFileSync('global.ini');
     const decoded = decodeIniBuffer(iniContentBuffer);
@@ -130,16 +130,12 @@ function convertIniToJson() {
         throw new Error('global.ini 中没有可用于比较的有效条目');
     }
 
-    const detected = detectDifferenceMode(partitioned.validItems, process.env.DIFFERENCE_MODE || 'auto');
-    const jsonArray = toGlobalJsonItems(partitioned.validItems, detected.mode);
+    assertSourceOnlyItems(partitioned.validItems);
+    const jsonArray = toGlobalJsonItems(partitioned.validItems);
 
     // 保存为 JSON 文件
     const jsonContent = JSON.stringify(jsonArray, null, 2);
     fs.writeFileSync('global.json', jsonContent, { encoding: 'utf-8', flag: 'w' });
-    const modeDescription = detected.mode === 'translation' ? '汉化差异' : '原文差异';
-    const ratioDescription = detected.hanValueRatio === null
-        ? '手动指定'
-        : `含汉字值占比 ${(detected.hanValueRatio * 100).toFixed(2)}%`;
     console.log(`global.ini 编码: ${decoded.encoding}`);
     if (decoded.repairedOffsets.length > 0) {
         console.warn(
@@ -153,9 +149,8 @@ function convertIniToJson() {
             + `避免产生假差异。key: ${partitioned.damagedItems.slice(0, 20).map(item => item.key).join(', ')}`
         );
     }
-    console.log(`差异模式: ${modeDescription}（${ratioDescription}）`);
+    console.log('差异模式: 仅比较原文 original');
     console.log('INI 文件已转换为 JSON 并保存到 global.json');
-    return detected.mode;
 }
 
 // 获取所有文件 ID 列表，并按创建时间排序
@@ -216,20 +211,14 @@ function mergeJsonData(allData) {
 }
 
 // 保存 global.json 中与 final.json 有差异的内容。
-function saveDifferences(outputFileName, differenceMode) {
+function saveDifferences(outputFileName) {
     const globalJson = JSON.parse(fs.readFileSync('global.json', 'utf-8'));
     const finalJson = JSON.parse(fs.readFileSync('final.json', 'utf-8'));
-    const result = buildDifferences(globalJson, finalJson, differenceMode);
+    const differences = buildDifferences(globalJson, finalJson);
 
     const outputPath = path.resolve(process.cwd(), outputFileName);
-    fs.writeFileSync(outputPath, JSON.stringify(result.differences, null, 2), { encoding: 'utf-8', flag: 'w' });
-    console.log(`已保存 ${result.differences.length} 条差异到 ${outputFileName}`);
-    if (result.missingKeys.length > 0) {
-        console.warn(
-            `跳过 ${result.missingKeys.length} 个 ParaTranz 中不存在的汉化 key，`
-            + `请先上传对应英文原文。示例: ${result.missingKeys.slice(0, 10).join(', ')}`
-        );
-    }
+    fs.writeFileSync(outputPath, JSON.stringify(differences, null, 2), { encoding: 'utf-8', flag: 'w' });
+    console.log(`已保存 ${differences.length} 条原文差异到 ${outputFileName}`);
     return outputPath;
 }
 
@@ -239,7 +228,7 @@ async function main() {
         const version = getVersionArgument();
         const differenceFileName = getDifferenceFileName(version);
 
-        const differenceMode = convertIniToJson();
+        convertIniToJson();
 
         const allData = await fetchFileData();
 
@@ -251,7 +240,7 @@ async function main() {
         console.log('数据已合并并保存到 final.json');
 
         // 保存差异；传入版本号时，例如输出 "4.9.0 PTU 12218630.json"。
-        const differenceFilePath = saveDifferences(differenceFileName, differenceMode);
+        const differenceFilePath = saveDifferences(differenceFileName);
 
         // 上传 difference 文件到 ParaTranz。
         await uploadDifferenceFile(differenceFilePath);

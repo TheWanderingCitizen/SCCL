@@ -4,6 +4,8 @@ const UTF8_BOM = Buffer.from([0xEF, 0xBB, 0xBF]);
 const UTF16_LE_BOM = Buffer.from([0xFF, 0xFE]);
 const UTF16_BE_BOM = Buffer.from([0xFE, 0xFF]);
 const HAN_CHARACTER_PATTERN = /\p{Script=Han}/u;
+// 英文原文中用于显示日语语言名称的合法例外。
+const SOURCE_HAN_ALLOWLIST = new Set(['ui_Japanese']);
 
 function startsWithBytes(buffer, prefix) {
     return buffer.length >= prefix.length && prefix.every((byte, index) => buffer[index] === byte);
@@ -199,34 +201,34 @@ function partitionEncodingDamagedItems(items) {
     };
 }
 
-function detectDifferenceMode(items, requestedMode = 'auto') {
-    const normalizedMode = String(requestedMode || 'auto').trim().toLowerCase();
-    if (!['auto', 'source', 'translation'].includes(normalizedMode)) {
-        throw new Error(`DIFFERENCE_MODE 仅支持 auto、source 或 translation，当前值为 ${requestedMode}`);
-    }
-
-    if (normalizedMode !== 'auto') {
-        return {
-            mode: normalizedMode,
-            hanValueRatio: null
-        };
-    }
-
-    const nonEmptyItems = items.filter(item => item.value.length > 0);
-    const hanValueCount = nonEmptyItems.filter(item => HAN_CHARACTER_PATTERN.test(item.value)).length;
-    const hanValueRatio = nonEmptyItems.length === 0 ? 0 : hanValueCount / nonEmptyItems.length;
-
-    return {
-        mode: nonEmptyItems.length >= 20 && hanValueRatio >= 0.1 ? 'translation' : 'source',
-        hanValueRatio
-    };
+function findItemsContainingHan(items) {
+    return items.filter(item => (
+        !SOURCE_HAN_ALLOWLIST.has(item.key)
+        && (
+            HAN_CHARACTER_PATTERN.test(item.key)
+            || HAN_CHARACTER_PATTERN.test(item.value)
+        )
+    ));
 }
 
-function toGlobalJsonItems(items, mode) {
+function assertSourceOnlyItems(items) {
+    const invalidItems = findItemsContainingHan(items);
+    if (invalidItems.length === 0) {
+        return;
+    }
+
+    const exampleKeys = invalidItems.slice(0, 20).map(item => item.key).join(', ');
+    throw new Error(
+        `global.ini 包含 ${invalidItems.length} 条中文内容，疑似错误上传了汉化文件；`
+        + `原文差异流程已停止。示例 key: ${exampleKeys}`
+    );
+}
+
+function toGlobalJsonItems(items) {
     return items.map(item => ({
         key: item.key,
-        original: mode === 'source' ? item.value : '',
-        translation: mode === 'translation' ? item.value : '',
+        original: item.value,
+        translation: '',
         context: ''
     }));
 }
@@ -238,56 +240,36 @@ function normalizeForComparison(value) {
         .replace(/\s+/gu, ' ');
 }
 
-function buildDifferences(globalItems, finalItems, mode) {
+function buildDifferences(globalItems, finalItems) {
     const finalByKey = new Map(finalItems.map(item => [item.key, item]));
     const differences = [];
-    const missingKeys = [];
 
     globalItems.forEach(globalItem => {
         const finalItem = finalByKey.get(globalItem.key);
-        const localValue = mode === 'translation'
-            ? globalItem.translation
-            : globalItem.original;
 
         if (!finalItem) {
-            if (mode === 'source') {
-                differences.push(globalItem);
-            } else {
-                missingKeys.push(globalItem.key);
-            }
-            return;
-        }
-
-        const remoteValue = mode === 'translation'
-            ? finalItem.translation
-            : finalItem.original;
-
-        if (normalizeForComparison(localValue) === normalizeForComparison(remoteValue)) {
-            return;
-        }
-
-        if (mode === 'translation') {
-            differences.push({
-                key: globalItem.key,
-                original: finalItem.original ?? '',
-                translation: localValue,
-                context: finalItem.context ?? ''
-            });
-        } else {
             differences.push(globalItem);
+            return;
         }
+
+        if (
+            normalizeForComparison(globalItem.original)
+            === normalizeForComparison(finalItem.original)
+        ) {
+            return;
+        }
+
+        differences.push(globalItem);
     });
 
-    return {
-        differences,
-        missingKeys
-    };
+    return differences;
 }
 
 module.exports = {
+    assertSourceOnlyItems,
     buildDifferences,
     decodeIniBuffer,
-    detectDifferenceMode,
+    findItemsContainingHan,
     normalizeForComparison,
     parseIniContent,
     partitionEncodingDamagedItems,
