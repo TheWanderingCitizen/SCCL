@@ -4,8 +4,7 @@ const UTF8_BOM = Buffer.from([0xEF, 0xBB, 0xBF]);
 const UTF16_LE_BOM = Buffer.from([0xFF, 0xFE]);
 const UTF16_BE_BOM = Buffer.from([0xFE, 0xFF]);
 const HAN_CHARACTER_PATTERN = /\p{Script=Han}/u;
-// 英文原文中用于显示日语语言名称的合法例外。
-const SOURCE_HAN_ALLOWLIST = new Set(['ui_Japanese']);
+const MAX_SOURCE_HAN_RATIO = 0.1;
 
 function startsWithBytes(buffer, prefix) {
     return buffer.length >= prefix.length && prefix.every((byte, index) => buffer[index] === byte);
@@ -203,23 +202,29 @@ function partitionEncodingDamagedItems(items) {
 
 function findItemsContainingHan(items) {
     return items.filter(item => (
-        !SOURCE_HAN_ALLOWLIST.has(item.key)
-        && (
-            HAN_CHARACTER_PATTERN.test(item.key)
-            || HAN_CHARACTER_PATTERN.test(item.value)
-        )
+        HAN_CHARACTER_PATTERN.test(item.key)
+        || HAN_CHARACTER_PATTERN.test(item.value)
     ));
 }
 
 function assertSourceOnlyItems(items) {
-    const invalidItems = findItemsContainingHan(items);
-    if (invalidItems.length === 0) {
-        return;
+    const nonEmptyItems = items.filter(item => item.value.length > 0);
+    const hanItems = findItemsContainingHan(nonEmptyItems);
+    const hanRatio = nonEmptyItems.length === 0 ? 0 : hanItems.length / nonEmptyItems.length;
+    const result = {
+        hanItemCount: hanItems.length,
+        nonEmptyItemCount: nonEmptyItems.length,
+        hanRatio
+    };
+
+    if (hanRatio <= MAX_SOURCE_HAN_RATIO) {
+        return result;
     }
 
-    const exampleKeys = invalidItems.slice(0, 20).map(item => item.key).join(', ');
+    const exampleKeys = hanItems.slice(0, 20).map(item => item.key).join(', ');
     throw new Error(
-        `global.ini 包含 ${invalidItems.length} 条中文内容，疑似错误上传了汉化文件；`
+        `global.ini 中文内容占比 ${(hanRatio * 100).toFixed(2)}%`
+        + `（${hanItems.length}/${nonEmptyItems.length}），超过 10%，疑似错误上传了汉化文件；`
         + `原文差异流程已停止。示例 key: ${exampleKeys}`
     );
 }

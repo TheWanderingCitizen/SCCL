@@ -120,7 +120,7 @@ async function uploadDifferenceFile(filePath) {
 }
 
 // 读取并转换英文原文 INI 文件为 JSON。
-// 此流程只比较原文；检测到任何中文内容时立即停止，防止误传汉化文件。
+// 此流程只比较原文；中文条目占比超过 10% 时立即停止，防止误传汉化文件。
 function convertIniToJson() {
     const iniContentBuffer = fs.readFileSync('global.ini');
     const decoded = decodeIniBuffer(iniContentBuffer);
@@ -130,7 +130,7 @@ function convertIniToJson() {
         throw new Error('global.ini 中没有可用于比较的有效条目');
     }
 
-    assertSourceOnlyItems(partitioned.validItems);
+    const sourceValidation = assertSourceOnlyItems(partitioned.validItems);
     const jsonArray = toGlobalJsonItems(partitioned.validItems);
 
     // 保存为 JSON 文件
@@ -149,6 +149,10 @@ function convertIniToJson() {
             + `避免产生假差异。key: ${partitioned.damagedItems.slice(0, 20).map(item => item.key).join(', ')}`
         );
     }
+    console.log(
+        `中文内容占比: ${(sourceValidation.hanRatio * 100).toFixed(2)}%`
+        + `（${sourceValidation.hanItemCount}/${sourceValidation.nonEmptyItemCount}）`
+    );
     console.log('差异模式: 仅比较原文 original');
     console.log('INI 文件已转换为 JSON 并保存到 global.json');
 }

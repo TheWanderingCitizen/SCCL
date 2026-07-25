@@ -52,20 +52,29 @@ test('isolates text that was already irreversibly decoded', () => {
     assert.deepEqual(partitioned.damagedItems, [{ key: 'Bad', value: 'damaged � text' }]);
 });
 
-test('accepts English source items', () => {
-    assert.doesNotThrow(() => assertSourceOnlyItems([
-        { key: 'Source_Key', value: 'English source' },
-        { key: 'ui_Japanese', value: '日本' }
-    ]));
+test('accepts Chinese content at exactly 10 percent', () => {
+    const items = Array.from({ length: 10 }, (_, index) => ({
+        key: `Source_${index}`,
+        value: index === 0 ? '日本' : `English source ${index}`
+    }));
+    const result = assertSourceOnlyItems(items);
+
+    assert.equal(result.hanItemCount, 1);
+    assert.equal(result.nonEmptyItemCount, 10);
+    assert.equal(result.hanRatio, 0.1);
 });
 
-test('rejects any Chinese content before comparison', () => {
+test('rejects Chinese content above 10 percent before comparison', () => {
     assert.throws(
         () => assertSourceOnlyItems([
-            { key: 'Good_Key', value: 'English source' },
-            { key: 'Wrong_Key', value: '错误上传的汉化文本' }
+            { key: 'Chinese_1', value: '错误上传的汉化文本' },
+            { key: 'Chinese_2', value: '另一条汉化文本' },
+            ...Array.from({ length: 8 }, (_, index) => ({
+                key: `Source_${index}`,
+                value: `English source ${index}`
+            }))
         ]),
-        /包含 1 条中文内容.*原文差异流程已停止/
+        /中文内容占比 20\.00%.*超过 10%.*原文差异流程已停止/
     );
 });
 
