@@ -138,12 +138,32 @@ def fetch_translation_files(
     return out, len(files), advisory_corpus
 
 def batch_update_stage(session: requests.Session, ids: List[int], stage: int = 2) -> None:
-    if not ids:
-        return
-    payload = {"op": "update", "id": ids, "stage": stage}
-    r = session.put(f"{API_BASE}/strings", headers=HEADERS, json=payload, timeout=60)
-    r.raise_for_status()
-    print(f"成功更新 {len(ids)} 个词条的 stage 为 {stage}。")
+    """按 ParaTranz 当前 API 契约逐条更新词条状态。
+
+    ParaTranz 的更新接口是 PUT /strings/{stringId}，不接受旧的
+    /strings 批量 payload（{"op": "update", "id": [...]}）。
+    """
+    updated = 0
+    for string_id in ids:
+        r = session.put(
+            f"{API_BASE}/strings/{string_id}",
+            headers=HEADERS,
+            json={"stage": stage},
+            timeout=60,
+        )
+        if not r.ok:
+            # ParaTranz 的错误响应通常包含具体校验原因；不要只丢失 400 状态码。
+            try:
+                detail = json.dumps(r.json(), ensure_ascii=False)
+            except ValueError:
+                detail = r.text.strip()
+            raise requests.HTTPError(
+                f"{r.status_code} {r.reason} for {r.request.method} "
+                f"{r.url}: {detail}",
+                response=r,
+            )
+        updated += 1
+    print(f"成功更新 {updated} 个词条的 stage 为 {stage}。")
 
 
 def _comment_signature(issue: Dict[str, Any]) -> str:
