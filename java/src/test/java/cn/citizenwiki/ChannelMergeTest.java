@@ -18,6 +18,27 @@ class ChannelMergeTest {
     Path cache;
 
     @Test
+    void preservesBaseTranslationsWhenRecentFilesOnlyContainDifferences() throws Exception {
+        PZFile base = file("3.24.0全文_0.json", 1);
+        PZFile live = file("4.10.3 LIVE 13165946.json", 2);
+        Files.writeString(cache.resolve(base.getName()), """
+                [{"id":1,"key":"ATC_Area18","original":"Area18 Landing Services",
+                  "translation":"18区 降落服务","stage":0}]
+                """);
+        Files.writeString(cache.resolve(live.getName()), """
+                [{"id":2,"key":"new_key","original":"New content","translation":"新增内容","stage":0}]
+                """);
+        var selected = ParatranzChannelFiles.select(List.of(base, live), Profile.LIVE);
+        var original = new LinkedHashMap<String, String>();
+        original.put("ATC_Area18", "Area18 Landing Services");
+        original.put("new_key", "New content");
+        var merged = MergeAndConvert.mergeTranslateData(original, selected.files(), cache);
+        assertEquals("18区 降落服务", merged.get("ATC_Area18").getTranslation());
+        assertEquals(0, merged.get("ATC_Area18").getStage());
+        assertEquals("新增内容", merged.get("new_key").getTranslation());
+    }
+
+    @Test
     void liveKeepsDraftsFromSelectedHistoryAndDoesNotReadNewerPtuCache() throws Exception {
         PZFile live = file("4.10.0 LIVE 125.json", 1);
         PZFile olderPtu = file("4.10.0 PTU 124.json", 2);

@@ -70,6 +70,39 @@ class ParatranzChannelFilesTest {
         assertThrows(IllegalStateException.class, () -> ParatranzChannelFiles.select(List.of(), Profile.PTU));
     }
 
+    @Test
+    void inheritsHistoricalBaseFilesAndLegacyNamesSeenInThePublishedRun() {
+        PZFile live = file("4.10.3 LIVE 13165946.json", 1);
+        List<PZFile> history = List.of(
+                file("3.24.X/3.24.0全文_0.json", 2),
+                file("3.24.X/3.24.0全文_1.json", 3),
+                file("3.24.X/3.24.0 Live-9296942新增-改变 (2).json", 4),
+                file("3.24.X/3.24.1 Live-9324446 新增.json", 5),
+                file("3.24.X/3.24.1 PTU-9315193 新增-改变", 6),
+                file("3.24.X/3.24.3 PTU 9412741", 7),
+                file("4.0-4.6/4.0 EPTU 9418963-0.json", 8),
+                file("4.0-4.6/4.0.1 PTU 9493308-2.json", 9),
+                file("4.0-4.6/4.1.1 PTU.9721902.json", 10),
+                file("4.0-4.6/4.2.1 PTU  9900767.json", 11),
+                file("4.0-4.6/4.3.1 PTU 10262876", 12),
+                file("4.8.X/4.8.2 LIVE.json", 13),
+                file("4.10.X/4.10.2 TECH-PREVIEW 12702948.json", 14));
+        var files = new java.util.ArrayList<>(history);
+        files.add(live);
+        assertEquals(files, ParatranzChannelFiles.select(files, Profile.LIVE).files());
+    }
+
+    @Test
+    void legacySuffixesAndUnknownBuildsCannotBypassTheChannelCutoff() {
+        PZFile live = file("4.10.3 LIVE 13165946.json", 1);
+        PZFile older = file("4.10.3 PTU-13160301新增.json", 2);
+        var selection = ParatranzChannelFiles.select(List.of(live, older,
+                file("4.10.3 PTU-13170000新增.json", 3),
+                file("5.0全文_0.json", 4), file("4.10.3全文_0.json", 5),
+                file("4.10.3 PTU.json", 6), file("4.10.3 LIVE.json", 7)), Profile.LIVE);
+        assertEquals(List.of(live, older), selection.files());
+    }
+
     private static PZFile file(String name, long id) {
         PZFile file = new PZFile();
         file.setName(name);
