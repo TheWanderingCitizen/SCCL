@@ -13,7 +13,7 @@ import cn.citizenwiki.model.dto.paratranz.response.PZFile;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import cn.citizenwiki.processor.translation.*;
 import cn.citizenwiki.utils.GlobalIniUtil;
-import cn.citizenwiki.utils.ParatranzFileUtil;
+import cn.citizenwiki.utils.ParatranzChannelFiles;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -109,7 +109,7 @@ public class MergeAndConvert implements AutoCloseable {
     }
 
     /**
-     * 合并 Paratranz 上的所有汉化文件,并调用translationProcessors进行处理
+     * 按通道和版本上限合并 Paratranz 汉化文件，并调用 translationProcessors 进行处理。
      */
     public void fetchAndMergeTranslations(List<PZFile> pzFiles) throws IOException {
         //拉取所有汉化文件元信息
@@ -117,13 +117,14 @@ public class MergeAndConvert implements AutoCloseable {
         if (pzFiles.isEmpty()) {
             return;
         }
-        //获取最新版本号
-        FileVersion lastFileVersion = pzFiles.stream()
-                .filter(pzFile -> ParatranzFileUtil.isFormatedName(pzFile.getName()))
-                .map(FileVersion::new)
-                .max(Comparator.naturalOrder())
-                .get();
-        logger.info("最新版本号为：{}", lastFileVersion.getName());
+        ParatranzChannelFiles.Selection selection = ParatranzChannelFiles.select(pzFiles, GlobalConfig.SW_PROFILE);
+        FileVersion lastFileVersion = selection.latestVersion();
+        logger.info("合并通道：{}，版本上限：{}，纳入 {} / {} 个文件（包含更早的其他通道文件）",
+                GlobalConfig.SW_PROFILE, lastFileVersion.getName(), selection.files().size(), pzFiles.size());
+        Set<PZFile> selectedFiles = new HashSet<>(selection.files());
+        for (PZFile pzFile : pzFiles) {
+            logger.info("[{}] {}", selectedFiles.contains(pzFile) ? "纳入合并" : "跳过文件", pzFile.getName());
+        }
         //从本地读取global.ini
         logger.info("正在读取global.ini数据，此数据将作为基准数据...");
         Path sourcePath = Paths.get("global.ini");
@@ -142,7 +143,8 @@ public class MergeAndConvert implements AutoCloseable {
             logger.info("成功上传global.ini至存储桶[{}]", bucketPath);
         }
         //合并pz上的汉化
-        Map<String, PZTranslation> mergedTranslateMap = Collections.unmodifiableMap(mergeTranslateData(globalIniMap, pzFiles));
+        Map<String, PZTranslation> mergedTranslateMap = Collections.unmodifiableMap(
+                mergeTranslateData(globalIniMap, selection.files(), Path.of(ParatranzCache.CACHE_DIR)));
         if (mergedTranslateMap.isEmpty()) {
             return;
         }
@@ -174,17 +176,18 @@ public class MergeAndConvert implements AutoCloseable {
      * 合并所有汉化文件,按照key的字典序排序(原来的逻辑)
      * 这里会显得用LinkedHashMap没有必要,不过以防万一用上,就用LinkedHashMap了
      */
-    private Map<String, PZTranslation> mergeTranslateData(LinkedHashMap<String, String> globalIniMap, List<PZFile> pzFiles) throws IOException {
+    static Map<String, PZTranslation> mergeTranslateData(LinkedHashMap<String, String> globalIniMap,
+                                                       List<PZFile> pzFiles, Path cacheDir) throws IOException {
         logger.info("开始拉取并合并paratranz汉化文件");
         Map<String, PZTranslation> mergedTranslateMap = new TreeMap<>();
         Map<String, PZTranslation> pzMap = new HashMap<>(globalIniMap.size());
         for (PZFile pzFile : pzFiles) {
-            if (pzFile.getFolder().equals("汉化规则")) {
+            if ("汉化规则".equals(pzFile.getFolder())) {
                 //跳过非汉化文件
                 continue;
             }
             //读取翻译文件缓存
-            Path path = Path.of(ParatranzCache.CACHE_DIR, pzFile.getName());
+            Path path = cacheDir.resolve(pzFile.getName());
             List<PZTranslation> pzTranslations = ParatranzJacksonTools.om.readValue(path.toFile(), ParatranzJacksonTools.LIST_TRANSLATION);
             pzTranslations.stream()
                     .collect(Collectors.toMap(PZTranslation::getKey, Function.identity(),
