@@ -2,6 +2,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
+const { fetchFileStrings } = require('./paratranz_strings');
 const {
     assertSourceOnlyItems,
     buildDifferences,
@@ -179,9 +180,7 @@ async function fetchFileData() {
 
 // 根据文件 ID 获取翻译数据
 async function fetchTranslationData(fileId) {
-    const url = `${PARATRANZ_API_BASE}/projects/${PROJECT_ID}/files/${fileId}/translation`;
-    const response = await axios.get(url, authHeader);
-    return response.data;
+    return fetchFileStrings(axios, `${PARATRANZ_API_BASE}/projects/${PROJECT_ID}`, fileId, authHeader);
 }
 
 // 合并 JSON 数据，优先保留 id 越大的数据

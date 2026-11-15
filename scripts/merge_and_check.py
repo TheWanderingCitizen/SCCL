@@ -107,6 +107,32 @@ def _session_with_retries() -> requests.Session:
 # ==============================
 # HTTP
 # ==============================
+def fetch_file_strings(session: requests.Session, file_id: int) -> List[Dict[str, Any]]:
+    """直接读取所有状态的词条，保留有译文的草稿，不使用文件导出结果。"""
+    entries: List[Dict[str, Any]] = []
+    page = 1
+    while True:
+        response = session.get(
+            f"{API_BASE}/strings",
+            headers=HEADERS,
+            # 不传 stage；mode=4 保留原文件接口包含的隐藏词条。
+            params={"file": file_id, "page": page, "pageSize": 1000, "orderBy": "id", "mode": 4},
+            timeout=60,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        results = payload.get("results")
+        page_count = payload.get("pageCount")
+        if not isinstance(results, list) or not isinstance(page_count, int):
+            raise ValueError(f"ParaTranz 词条分页响应格式错误，file={file_id}")
+        if not results and page < page_count:
+            raise ValueError(f"ParaTranz 词条分页提前返回空页，file={file_id}")
+        entries.extend(results)
+        if page >= page_count:
+            return entries
+        page += 1
+
+
 def fetch_translation_files(
     session: requests.Session,
 ) -> Tuple[List[List[Dict[str, Any]]], int, List[Dict[str, Any]]]:
@@ -120,9 +146,7 @@ def fetch_translation_files(
         fid = item.get("id")
         if fid is None:
             continue
-        dl = session.get(f"{API_BASE}/files/{fid}/translation", headers=HEADERS, timeout=60)
-        dl.raise_for_status()
-        payload = dl.json() or []
+        payload = fetch_file_strings(session, fid)
         if isinstance(payload, list):
             out.append(payload)
             source_file = {

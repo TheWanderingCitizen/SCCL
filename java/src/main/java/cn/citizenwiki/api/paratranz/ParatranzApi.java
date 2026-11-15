@@ -5,6 +5,8 @@ import cn.citizenwiki.http.HttpException;
 import cn.citizenwiki.model.dto.paratranz.response.PZFile;
 import cn.citizenwiki.model.dto.paratranz.response.PZTranslation;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,6 +15,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.time.Duration;
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Paratranz API封装
@@ -76,18 +79,45 @@ public class ParatranzApi extends BaseApi {
     }
 
     /**
-     * /projects/{projectId}/files/{fileId}/translation
+     * 直接读取全部状态的词条（包括有译文的未翻译/草稿），不使用文件导出结果。
      *
      * @param fileId 文件id
      * @return
      */
     public List<PZTranslation> fileTranslation(Long fileId) {
-        String urlString = ParatranzConfig.INSTANCE.getUrlFiles() + "/" + fileId + "/translation";
+        List<PZTranslation> translations = new ArrayList<>();
+        for (int page = 1; ; page++) {
+            JsonNode response = fileStringsPage(fileId, page);
+            JsonNode results = response.get("results");
+            if (results == null || !results.isArray() || !response.path("pageCount").canConvertToInt()) {
+                throw new IllegalStateException("ParaTranz 词条分页响应格式错误，file=" + fileId);
+            }
+            if (results.isEmpty() && page < response.path("pageCount").asInt()) {
+                throw new IllegalStateException("ParaTranz 词条分页提前返回空页，file=" + fileId);
+            }
+            try {
+                List<PZTranslation> entries = ParatranzJacksonTools.om.readerFor(ParatranzJacksonTools.LIST_TRANSLATION)
+                        .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                        .readValue(results);
+                translations.addAll(entries);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            if (page >= response.path("pageCount").asInt()) {
+                return translations;
+            }
+        }
+    }
+
+    JsonNode fileStringsPage(Long fileId, int page) {
+        // 不传 stage，保留草稿；mode=4 保留文件数据接口原有的隐藏词条覆盖范围。
+        String urlString = ParatranzConfig.INSTANCE.getUrlPrefix() + "/strings?file=" + fileId
+                + "&page=" + page + "&pageSize=1000&orderBy=id&mode=4";
         HttpRequest request = authRequestBuilder()
                 .uri(URI.create(urlString))
                 .GET()
                 .build();
-        return sendRequestOfJsonResp(request, ParatranzJacksonTools.LIST_TRANSLATION);
+        return sendRequestOfJsonResp(request, new TypeReference<JsonNode>() {});
     }
 
 

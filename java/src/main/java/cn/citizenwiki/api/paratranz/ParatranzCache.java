@@ -23,7 +23,8 @@ public class ParatranzCache {
     private static final Logger logger = LoggerFactory.getLogger(ParatranzCache.class);
     //Paratranz Apibao包装类
     private static final ParatranzApi paratranzApi = ParatranzApi.INSTANCE;
-    private static final String METADATA_FILE_NAME = "paratranz_files_metadata.info";
+    // 切换为直接读取词条后，旧文件导出缓存必须重新拉取一次。
+    private static final String METADATA_FILE_NAME = "paratranz_files_metadata_with_drafts_v2.info";
 
     /**
      * 比较PZFile是否更新
@@ -72,12 +73,9 @@ public class ParatranzCache {
             return null;
         }
         String lastMetadata = ParatranzJacksonTools.om.writeValueAsString(newPzFiles);
-        //将最新信息写入metadata
-        Files.writeString(metadataFilePath, lastMetadata);
-
         for (PZFile newPzFile : newPzFiles) {
             PZFile cachePzFile = cachePzMap.get(newPzFile.getName());
-            if (isSame(cachePzFile, newPzFile)) {
+            if (isSame(cachePzFile, newPzFile) && Files.isRegularFile(Path.of(CACHE_DIR, newPzFile.getName()))) {
                 logger.info("【{}】命中缓存，old:【{}】 new：【{}】", newPzFile.getName()
                         , ParatranzJacksonTools.om.writeValueAsString(cachePzFile)
                         , ParatranzJacksonTools.om.writeValueAsString(newPzFile)
@@ -93,6 +91,8 @@ public class ParatranzCache {
                 Files.writeString(newPzFilePath, ParatranzJacksonTools.om.writeValueAsString(pzTranslations));
             }
         }
+        // 所有文件成功后再更新元信息，失败重试时不能把未完成的文件当成缓存命中。
+        Files.writeString(metadataFilePath, lastMetadata);
         return newPzFiles;
     }
 
